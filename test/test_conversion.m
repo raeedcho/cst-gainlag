@@ -1,6 +1,6 @@
 %% convert data
 clearvars -except smile_data
-td = convertSMILEtoTD(smile_data);
+td = convertSMILEtoTD(smile_data,struct('array_alias',{{'Right M1','M1'}}));
 
 %% plot cursor positions for some Center Out trials
 [~,td_co] = getTDidx(td,'task','CO','result','R');
@@ -24,9 +24,9 @@ td_cst = trimTD(td_cst,{'idx_goCueTime',100},{'idx_rewardTime',-100});
 figure
 for trialnum = 1:30
     clf
-    scatter(-td_cst(trialnum).ct_location(1),-td_cst(trialnum).ct_location(2),100,'k','filled')
+    scatter(td_cst(trialnum).ct_location(1),-td_cst(trialnum).ct_location(2),100,'k','filled')
     hold on
-    plot(-td_cst(trialnum).hand_pos(:,1),-td_cst(trialnum).hand_pos(:,2),'-k','linewidth',2)
+    plot(td_cst(trialnum).hand_pos(:,1),-td_cst(trialnum).hand_pos(:,2),'-k','linewidth',2)
     set(gca,'box','off','tickdir','out')
     waitforbuttonpress
 end
@@ -34,9 +34,10 @@ end
 figure
 for trialnum = 1:30
     clf
-    plot(td_cst(trialnum).hand_pos(:,1),'-k','linewidth',2)
+    plot(td_cst(trialnum).hand_pos(:,1),'-g','linewidth',2)
     hold on
-    plot(td_cst(trialnum).cursor_pos(:,1),'-g','linewidth',2)
+    plot(td_cst(trialnum).cursor_pos(:,1),'-k','linewidth',2)
+    plot(xlim,repmat(td_cst(trialnum).ct_location(1),1,2),'-k','linewidth',3)
     set(gca,'box','off','tickdir','out')
     waitforbuttonpress
 end
@@ -46,6 +47,7 @@ end
 td_cst = trimTD(td_cst,{'idx_goCueTime',100},{'idx_rewardTime',-100});
 
 % figure
+lambda = vertcat(td_cst.lambda);
 [gain,lag] = deal(zeros(length(td_cst),1));
 for trialnum = 1:length(td_cst)
     [corr_trace,corr_lag] = xcorr(td_cst(trialnum).hand_pos(:,1),td_cst(trialnum).cursor_pos(:,1));
@@ -61,8 +63,10 @@ end
 
 figure
 subplot(2,1,1)
-scatter(1:length(td_cst),gain,[],'k','filled')
+scatter(1:length(td_cst),gain,[],lambda,'filled')
 set(gca,'box','off','tickdir','out')
+colormap(linspecer(length(unique(lambda))))
 subplot(2,1,2)
-scatter(1:length(td_cst),lag,[],'k','filled')
+scatter(1:length(td_cst),lag,[],lambda,'filled')
 set(gca,'box','off','tickdir','out')
+colormap(linspecer(length(unique(lambda))))

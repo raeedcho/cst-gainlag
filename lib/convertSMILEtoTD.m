@@ -6,6 +6,9 @@ function trial_data = convertSMILEtoTD(smile_data,params)
 %   smile_data - data structure to convert from SMILE type to TrialData
 %   params - Parameters struct
 %       .bin_size - bin size in seconds to convert to (default: 0.001)
+%       .array_alias - cell array for renaming array names.
+%           First col is name to replace, second col is replacement name. Rows are different aliases
+%       .valid_sort_idx - list of array channel unit indices to keep. Defaults to 1:10
 %       .meta - struct containing meta information to add to file (default: emtpy struct)
 %           Note that monkey, date, task are extracted from smile_data already.
 %
@@ -15,6 +18,9 @@ function trial_data = convertSMILEtoTD(smile_data,params)
     if nargin<2
         params = struct();
     end
+
+    % first get unit guide over all of smile_data
+    unit_guide = get_smile_unit_guide(smile_data,params);
 
     % Loop over smile_data, which is already split up by trial
     td_cell = cell(1,length(smile_data));
@@ -42,13 +48,16 @@ function trial_data = convertSMILEtoTD(smile_data,params)
         td_cell{trialnum} = parse_smile_meta(td_cell{trialnum},smile_data(trialnum),params);
         td_cell{trialnum} = parse_smile_events(td_cell{trialnum},smile_data(trialnum),params);
         td_cell{trialnum} = parse_smile_behavior(td_cell{trialnum},smile_data(trialnum),params);
-        td_cell{trialnum} = parse_smile_spikes(td_cell{trialnum},smile_data(trialnum),params);
+        td_cell{trialnum} = parse_smile_spikes(td_cell{trialnum},smile_data(trialnum),unit_guide,params);
 
         td_cell{trialnum} = rmfield(td_cell{trialnum},'timevec');
     end
     trial_data=cat(2,td_cell{:});
 end
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Sub-functions
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function trial = parse_smile_meta(in_trial,smile_trial,params)
     % Get meta data out of smile trial data structure
 
@@ -210,62 +219,121 @@ function trial = parse_smile_behavior(in_trial,smile_trial,params)
     trial = in_trial;
 
     % first get the phasespace marker data
-    phasespace_data = smile_trial.TrialData.Marker.rawPositions;
     phasespace_freq = double(smile_trial.TrialData.Marker.frequency);
-    visual_timevec = phasespace_data(:,7)/1000;
-    hand_timevec = phasespace_data(:,6)/1000;
-    marker_pos = phasespace_data(:,2:4);
+    phasespace_data = smile_trial.TrialData.Marker.rawPositions;
 
-    % resample hand pos data to new timevector
-    [temp_resampled,t_resamp] = resample_signals(marker_pos,hand_timevec,struct( ...
-        'bin_size',bin_size, ...
-        'samprate',phasespace_freq...
-        ));
-    trial.hand_pos = interp1(t_resamp,temp_resampled,trial.timevec);
+    if ~isempty(phasespace_data)
+        visual_timevec = phasespace_data(:,7)/1000;
+        hand_timevec = phasespace_data(:,6)/1000;
+        marker_pos = phasespace_data(:,2:4);
 
-    % resample cursor pos data to new timevector
-    [temp_resampled,t_resamp] = resample_signals(marker_pos,visual_timevec,struct( ...
-        'bin_size',bin_size, ...
-        'samprate',phasespace_freq...
-        ));
-    trial.cursor_pos = interp1(t_resamp,temp_resampled,trial.timevec);
-
-    % if this is a CST trial, we need to replace cursor info during the Control System state
-    if ~isempty(smile_trial.TrialData.Marker.errorCursor)
-        cursor_data = smile_trial.TrialData.Marker.errorCursor;
-        cursor_timevec = cursor_data(:,4)/1000; % this is not necessarily regularly spaced...
-        cursor_pos = cursor_data(:,1:3);
-
-        % interpolate to uniform sampling rate (assuming that average sampling rate is consistent)
-        dt = (cursor_timevec(end)-cursor_timevec(1))/length(cursor_timevec);
-        tGrid = (cursor_timevec(1):dt:cursor_timevec(end))';
-        cursor_pos_interp = zeros(length(tGrid),size(cursor_pos,2));
-        for i=1:size(cursor_pos,2)
-            cursor_pos_interp(:,i) = interp1(cursor_timevec,cursor_pos(:,i),tGrid);
-        end
-
-        % resample signals to match new time vector
-        [temp_resampled,t_resamp] = resample_signals(cursor_pos_interp,tGrid,struct( ...
+        % resample hand pos data to new timevector
+        [temp_resampled,t_resamp] = resample_signals(marker_pos,hand_timevec,struct( ...
             'bin_size',bin_size, ...
-            'samprate',1/dt...
+            'samprate',phasespace_freq...
             ));
-        cursor_pos_resamp = interp1(t_resamp,temp_resampled,trial.timevec);
+        trial.hand_pos = interp1(t_resamp,temp_resampled,trial.timevec);
 
-        % replace old cursor pos with this one where applicable
-        error_cursor_idx = ~isnan(cursor_pos_resamp(:,1));
-        trial.cursor_pos(error_cursor_idx) = cursor_pos_resamp(error_cursor_idx);
+        % resample cursor pos data to new timevector
+        [temp_resampled,t_resamp] = resample_signals(marker_pos(:,1:2),visual_timevec,struct( ...
+            'bin_size',bin_size, ...
+            'samprate',phasespace_freq...
+            ));
+        trial.cursor_pos = interp1(t_resamp,temp_resampled,trial.timevec);
+
+        % if this is a CST trial, we need to replace cursor info during the Control System state
+        if ~isempty(smile_trial.TrialData.Marker.errorCursor)
+            cursor_data = smile_trial.TrialData.Marker.errorCursor;
+            cursor_timevec = cursor_data(:,4)/1000; % this is not necessarily regularly spaced...
+            cursor_pos = cursor_data(:,1:2);
+
+            % interpolate to uniform sampling rate (assuming that average sampling rate is consistent)
+            dt = (cursor_timevec(end)-cursor_timevec(1))/length(cursor_timevec);
+            tGrid = (cursor_timevec(1):dt:cursor_timevec(end))';
+            cursor_pos_interp = zeros(length(tGrid),size(cursor_pos,2));
+            for i=1:size(cursor_pos,2)
+                cursor_pos_interp(:,i) = interp1(cursor_timevec,cursor_pos(:,i),tGrid);
+            end
+
+            % resample signals to match new time vector
+            [temp_resampled,t_resamp] = resample_signals(cursor_pos_interp,tGrid,struct( ...
+                'bin_size',bin_size, ...
+                'samprate',1/dt...
+                ));
+            cursor_pos_resamp = interp1(t_resamp,temp_resampled,trial.timevec);
+
+            % replace old cursor pos with this one where applicable
+            error_cursor_idx = ~isnan(cursor_pos_resamp(:,1));
+            trial.cursor_pos(error_cursor_idx) = cursor_pos_resamp(error_cursor_idx);
+        end
+    else
+        trial.hand_pos = [];
+        trial.cursor_pos = [];
     end
 end
 
-function trial = parse_smile_spikes(in_trial,smile_trial,params)
+function trial = parse_smile_spikes(in_trial,smile_trial,unit_guide,params)
     % parse out neural activity from smile data struct
     
+    % import parameters
+    array_alias = {};
+    assignParams(who,params);
+
     % copy over input trial
     trial = in_trial;
 
-    % construct a matrix of binned spikes
-    % (placeholder for now)
-    binned_spikes = zeros(length(trial.timevec),1);
-    trial.M1_spikes = binned_spikes;
-    trial.M1_unit_guide = [1 1];
+    % Extract info from smile_trial
+    array_name = smile_trial.TrialData.TDT.brainArea;
+
+    % alias array names if we want
+    if ~isempty(array_alias)
+        for array_idx = 1:size(array_alias,1)
+            if strcmp(array_name,array_alias{1,1})
+                array_name = array_alias{1,2};
+            end
+        end
+    end
+
+    array_name = strrep(array_name,' ','');
+
+    % construct a matrix of binned spikes and fill with spikes
+    binned_spikes = zeros(length(trial.timevec),size(unit_guide,1));
+
+    % fill matrix with histcounts
+    spike_times = double(smile_trial.TrialData.TDT.snippetInfo');
+    if ~isempty(spike_times)
+        t_bin_edges = [trial.timevec trial.timevec(end)+mode(diff(trial.timevec))];
+        for unit_idx = 1:size(unit_guide,1)
+            unit_to_bin = unit_guide(unit_idx,:);
+            filter_idx = spike_times(:,1)==unit_to_bin(1) & spike_times(:,2)==unit_to_bin(2);
+            binned_spikes(:,unit_idx) = histcounts(spike_times(filter_idx,3)/1000,t_bin_edges)';
+        end
+    end
+
+    % add to trial
+    trial.(sprintf('%s_unit_guide',array_name)) = unit_guide;
+    trial.(sprintf('%s_spikes',array_name)) = binned_spikes;
+end
+
+function unit_guide = get_smile_unit_guide(smile_data,params)
+    % function to extract unit guide from all trials of smile_data
+    
+    % set up params
+    valid_sort_idx = 1:10;
+    assignParams(who,params);
+
+    % concatenate snippet info from all trials of smile_data
+    TrialData = horzcat(smile_data.TrialData);
+    TDT = horzcat(TrialData.TDT);
+    snippetInfo = horzcat(TDT.snippetInfo);
+
+    % get unit guide
+    spike_times = double(snippetInfo');
+    if ~isempty(spike_times)
+        unit_guide = unique(spike_times(:,1:2),'rows');
+        keep_units = ismember(unit_guide(:,2),valid_sort_idx);
+        unit_guide = unit_guide(keep_units,:);
+    else
+        unit_guide = [-1 -1];
+    end
 end
