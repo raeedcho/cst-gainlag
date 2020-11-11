@@ -85,9 +85,10 @@ for filenum = 31%1:length(filenames)
 
         % plot out hand pos vs cursor pos for individual trials
         figure('defaultaxesfontsize',18)
-        for trialnum = 1:length(td_cst)
+        trialnum = 1;
+        while trialnum<=length(td_cst)
             clf
-            subplot(1,2,1)
+            subplot(2,2,[1 3])
             plot([-60 60],[0 0],'-k','linewidth',1)
             hold on
             plot([0 0],[-60 60],'-k','linewidth',1)
@@ -101,16 +102,16 @@ for filenum = 31%1:length(filenames)
                 plot([50 50],[-60 60],'-r','linewidth',1)
             end
             
-%             scatter(td_cst(trialnum).cursor_pos(:,1),td_cst(trialnum).hand_pos(:,1),[],1:length(td_cst(trialnum).cursor_pos),'filled')
-            scatter(td_cst(trialnum).cursor_pos(:,1),td_cst(trialnum).hand_pos(:,1),[],td_cst(trialnum).tol_instab,'filled')
-            colorbar
+            scatter(td_cst(trialnum).cursor_pos(:,1),td_cst(trialnum).hand_pos(:,1),[],1:length(td_cst(trialnum).cursor_pos),'filled')
+%             scatter(td_cst(trialnum).cursor_pos(:,1),td_cst(trialnum).hand_pos(:,1),[],td_cst(trialnum).tol_instab,'filled')
+%             colorbar
 
 %             plot3(td_cst(trialnum).cursor_pos(:,1),td_cst(trialnum).hand_pos(:,1),td_cst(trialnum).hand_vel(:,1),'-k')
 
             colormap(viridis)
             
             axis equal
-            set(gca,'box','off','tickdir','out','xlim',[-60 60],'ylim',[-60 60],'clim',[0 5])
+            set(gca,'box','off','tickdir','out','xlim',[-60 60],'ylim',[-60 60])
             title(strcat(sprintf('%s %s \\lambda = %f, Trial ID: %d',...
                 td_cst(trialnum).monkey,...
                 td_cst(trialnum).date_time,...
@@ -119,12 +120,36 @@ for filenum = 31%1:length(filenames)
             xlabel('Cursor position (mm)')
             ylabel('Hand position (mm)')
             
-            subplot(1,2,2)
+            subplot(2,2,2)
             plot([0 6],td_cst(trialnum).lambda*[1 1],'k','linewidth',1)
             hold on
-            scatter(td_cst(trialnum).bin_size*(1:length(td_cst(trialnum).cursor_pos)),td_cst(trialnum).tol_instab,[],td_cst(trialnum).tol_instab,'filled')
-            set(gca,'box','off','tickdir','out','ylim',[0 5],'clim',[0 5])
-            waitforbuttonpress;
+            scatter(td_cst(trialnum).bin_size*(1:length(td_cst(trialnum).cursor_pos)),td_cst(trialnum).hand_pos(:,1),[],1:length(td_cst(trialnum).cursor_pos),'filled')
+%             scatter(td_cst(trialnum).bin_size*(1:length(td_cst(trialnum).cursor_pos)),td_cst(trialnum).tol_instab,[],td_cst(trialnum).tol_instab,'filled')
+            set(gca,'box','off','tickdir','out','ylim',cursor_max*[-1 1])
+            title('Hand position (mm)')
+            xlabel('Time after CST start (s)')
+            
+            subplot(2,2,4)
+            plot([0 6],td_cst(trialnum).lambda*[1 1],'k','linewidth',1)
+            hold on
+            scatter(td_cst(trialnum).bin_size*(1:length(td_cst(trialnum).cursor_pos)),td_cst(trialnum).cursor_pos(:,1),[],1:length(td_cst(trialnum).cursor_pos),'filled')
+%             scatter(td_cst(trialnum).bin_size*(1:length(td_cst(trialnum).cursor_pos)),td_cst(trialnum).tol_instab,[],td_cst(trialnum).tol_instab,'filled')
+            set(gca,'box','off','tickdir','out','ylim',cursor_max*[-1 1])
+            title('Cursor position (mm)')
+            xlabel('Time after CST start (s)')
+            
+            while true
+                if waitforbuttonpress==1
+                    charpressed = get(gcf,'CurrentCharacter')
+                    if charpressed == 'h'
+                        trialnum = max(trialnum-1,1);
+                        break;
+                    elseif charpressed == 'l'
+                        trialnum = min(trialnum+1,length(td_cst));
+                        break;
+                    end
+                end
+            end
         end
         
         fprintf('Finished file %d of %d at time %f\n',filenum,length(filenames),toc(filetic))
