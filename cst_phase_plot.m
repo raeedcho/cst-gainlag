@@ -83,17 +83,18 @@ for filenum = 31%1:length(filenames)
             td_cst(trialnum).tol_instab = 1./time_left .* log(cursor_max./abs(td_cst(trialnum).cursor_pos(:,1)+td_cst(trialnum).hand_pos(:,1)));
         end
 
-        % plot out hand pos vs cursor pos for individual trials
-        figure('defaultaxesfontsize',18)
+        %% plot out hand pos vs cursor pos for individual trials
+        figure('defaultaxesfontsize',18,'position',[1544 397 813 839])
         trialnum = 1;
         while trialnum<=length(td_cst)
             clf
-            subplot(2,2,[1 3])
+            phase_ax = subplot(2,2,3);
             plot([-60 60],[0 0],'-k','linewidth',1)
             hold on
             plot([0 0],[-60 60],'-k','linewidth',1)
             plot([-60 60],[60 -60],'-k','linewidth',1)
             plot([-50 -50],[-60 60],'-r','linewidth',1)
+            patch([0 0 -60 60 0],[-60 60 60 -60 -60],[0.8 0.8 0.8],'edgecolor','none')
             if strcmpi(td_cst(trialnum).result,'R')
                 plot([-50 -50],[-60 60],'-g','linewidth',1)
                 plot([50 50],[-60 60],'-g','linewidth',1)
@@ -112,35 +113,50 @@ for filenum = 31%1:length(filenames)
             
             axis equal
             set(gca,'box','off','tickdir','out','xlim',[-60 60],'ylim',[-60 60])
-            title(strcat(sprintf('%s %s \\lambda = %f, Trial ID: %d',...
+            
+            xlabel('Cursor position (mm)')
+            ylabel('Hand position (mm)')
+            
+            hand_ax = subplot(2,2,4);
+            plot([0 6],[0 0],'k','linewidth',1)
+            hold on
+            scatter(td_cst(trialnum).bin_size*(1:length(td_cst(trialnum).cursor_pos)),td_cst(trialnum).hand_pos(:,1),[],1:length(td_cst(trialnum).cursor_pos),'filled')
+%             scatter(td_cst(trialnum).bin_size*(1:length(td_cst(trialnum).cursor_pos)),td_cst(trialnum).tol_instab,[],td_cst(trialnum).tol_instab,'filled')
+            set(gca,'box','off','tickdir','out','ylim',60*[-1 1])
+%             title('Hand position (mm)')
+            xlabel('Time after CST start (s)')
+            
+            cursor_ax = subplot(2,2,1);
+            plot([0 0],[0 6],'k','linewidth',1)
+            hold on
+            if strcmpi(td_cst(trialnum).result,'R')
+                plot([-50 -50],[0 6],'-g','linewidth',1)
+                plot([50 50],[0 6],'-g','linewidth',1)
+            else
+                plot([-50 -50],[0 6],'-r','linewidth',1)
+                plot([50 50],[0 6],'-r','linewidth',1)
+            end
+            scatter(...
+                td_cst(trialnum).cursor_pos(:,1),...
+                td_cst(trialnum).bin_size*(1:length(td_cst(trialnum).cursor_pos)),...
+                [],1:length(td_cst(trialnum).cursor_pos),'filled')
+%             scatter(td_cst(trialnum).bin_size*(1:length(td_cst(trialnum).cursor_pos)),td_cst(trialnum).tol_instab,[],td_cst(trialnum).tol_instab,'filled')
+            set(gca,'box','off','tickdir','out','xlim',60*[-1 1])
+%             title('Cursor position (mm)')
+            ylabel('Time after CST start (s)')
+            
+            linkaxes([phase_ax cursor_ax],'x')
+            linkaxes([phase_ax hand_ax],'y')
+            
+            suptitle(strcat(sprintf('%s %s \\lambda = %f, Trial ID: %d',...
                 td_cst(trialnum).monkey,...
                 td_cst(trialnum).date_time,...
                 td_cst(trialnum).lambda,...
                 td_cst(trialnum).trial_id)))
-            xlabel('Cursor position (mm)')
-            ylabel('Hand position (mm)')
-            
-            subplot(2,2,2)
-            plot([0 6],td_cst(trialnum).lambda*[1 1],'k','linewidth',1)
-            hold on
-            scatter(td_cst(trialnum).bin_size*(1:length(td_cst(trialnum).cursor_pos)),td_cst(trialnum).hand_pos(:,1),[],1:length(td_cst(trialnum).cursor_pos),'filled')
-%             scatter(td_cst(trialnum).bin_size*(1:length(td_cst(trialnum).cursor_pos)),td_cst(trialnum).tol_instab,[],td_cst(trialnum).tol_instab,'filled')
-            set(gca,'box','off','tickdir','out','ylim',cursor_max*[-1 1])
-            title('Hand position (mm)')
-            xlabel('Time after CST start (s)')
-            
-            subplot(2,2,4)
-            plot([0 6],td_cst(trialnum).lambda*[1 1],'k','linewidth',1)
-            hold on
-            scatter(td_cst(trialnum).bin_size*(1:length(td_cst(trialnum).cursor_pos)),td_cst(trialnum).cursor_pos(:,1),[],1:length(td_cst(trialnum).cursor_pos),'filled')
-%             scatter(td_cst(trialnum).bin_size*(1:length(td_cst(trialnum).cursor_pos)),td_cst(trialnum).tol_instab,[],td_cst(trialnum).tol_instab,'filled')
-            set(gca,'box','off','tickdir','out','ylim',cursor_max*[-1 1])
-            title('Cursor position (mm)')
-            xlabel('Time after CST start (s)')
             
             while true
                 if waitforbuttonpress==1
-                    charpressed = get(gcf,'CurrentCharacter')
+                    charpressed = get(gcf,'CurrentCharacter');
                     if charpressed == 'h'
                         trialnum = max(trialnum-1,1);
                         break;
