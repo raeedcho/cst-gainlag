@@ -82,6 +82,12 @@ for filenum = 31%1:length(filenames)
             time_left = max_trial_length-timevec;
             td_cst(trialnum).tol_instab = 1./time_left .* log(cursor_max./abs(td_cst(trialnum).cursor_pos(:,1)+td_cst(trialnum).hand_pos(:,1)));
         end
+        
+        % find portions of trials that are in the restoration zone
+%         for trialnum = 1:length(td_cst)
+%             % for restoration, cursor velocity and cursor position have opposite sign
+%             is_restoring = (sign((td_cst(trialnum).hand_pos(:,1) + td_cst(trialnum).cursor_pos(:,1)).*td_cst(trialnum).cursor_pos(:,1)) < 0);
+%         end
 
         %% plot out hand pos vs cursor pos for individual trials
         figure('defaultaxesfontsize',18,'position',[1544 397 813 839])
