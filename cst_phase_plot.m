@@ -11,7 +11,7 @@
     max_trial_length = 6;
     cursor_max = 50;
     
-%% Loop through files to check out temporal smoothness at different lambdas
+%% Loop through files
 filetic = tic;
 control_params_file_cell = cell(length(filenames),1);
 for filenum = 31%1:length(filenames)
@@ -94,7 +94,8 @@ for filenum = 31%1:length(filenames)
         trialnum = 1;
         while trialnum<=length(td_cst)
             clf
-            phase_ax = subplot(2,2,3);
+%             phase_ax = subplot(2,2,3);
+            phase_ax = subplot(4,4,[9 10 13 14]);
             plot([-60 60],[0 0],'-k','linewidth',1)
             hold on
             plot([0 0],[-60 60],'-k','linewidth',1)
@@ -123,7 +124,8 @@ for filenum = 31%1:length(filenames)
             xlabel('Cursor position (mm)')
             ylabel('Hand position (mm)')
             
-            hand_ax = subplot(2,2,4);
+%             hand_ax = subplot(2,2,4);
+            hand_ax = subplot(4,4,[11 12 15 16]);
             plot([0 6],[0 0],'k','linewidth',1)
             hold on
             scatter(td_cst(trialnum).bin_size*(1:length(td_cst(trialnum).cursor_pos)),td_cst(trialnum).hand_pos(:,1),[],1:length(td_cst(trialnum).cursor_pos),'filled')
@@ -132,7 +134,8 @@ for filenum = 31%1:length(filenames)
 %             title('Hand position (mm)')
             xlabel('Time after CST start (s)')
             
-            cursor_ax = subplot(2,2,1);
+%             cursor_ax = subplot(2,2,1);
+            cursor_ax = subplot(4,4,[1 2 5 6]);
             plot([0 0],[0 6],'k','linewidth',1)
             hold on
             if strcmpi(td_cst(trialnum).result,'R')
@@ -151,8 +154,21 @@ for filenum = 31%1:length(filenames)
 %             title('Cursor position (mm)')
             ylabel('Time after CST start (s)')
             
+            hand_vel_ax = subplot(4,4,[7 8]);
+            plot([0 6],[0 0],'k','linewidth',1)
+            hold on
+            scatter(td_cst(trialnum).bin_size*(1:length(td_cst(trialnum).cursor_pos)),td_cst(trialnum).hand_vel(:,1),[],1:length(td_cst(trialnum).cursor_pos),'filled')
+            set(gca,'box','off','tickdir','out')
+            
+            hand_acc_ax = subplot(4,4,[3 4]);
+            plot([0 6],[0 0],'k','linewidth',1)
+            hold on
+            scatter(td_cst(trialnum).bin_size*(1:length(td_cst(trialnum).cursor_pos)),td_cst(trialnum).hand_acc(:,1),[],1:length(td_cst(trialnum).cursor_pos),'filled')
+            set(gca,'box','off','tickdir','out')
+            
             linkaxes([phase_ax cursor_ax],'x')
             linkaxes([phase_ax hand_ax],'y')
+            linkaxes([hand_ax hand_vel_ax hand_acc_ax],'x')
             
             suptitle(strcat(sprintf('%s %s \\lambda = %f, Trial ID: %d',...
                 td_cst(trialnum).monkey,...
