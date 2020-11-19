@@ -7,16 +7,10 @@
     file_info = dir(fullfile(dataroot,'library','*COCST*'));
     filenames = horzcat({file_info.name})';
     
-%% set up initial variables
-    max_trial_length = 6;
-    cursor_max = 50;
-    
 %% Loop through files
 filetic = tic;
-control_params_file_cell = cell(length(filenames),1);
-for filenum = 31%1:length(filenames)
-    td = load(fullfile(dataroot,'library',filenames{filenum}));
-    td = td.trial_data;
+for filenum = 1:5%length(filenames)
+    td_cst = load_clean_cst_data(fullfile(dataroot,'library',filenames{filenum}));
     
 %     % get rid of unsorted neurons
 %     bad_units = td(1).M1_unit_guide(:,2)<=1;
@@ -35,164 +29,19 @@ for filenum = 31%1:length(filenames)
 %         continue
 %     end
 %     
-%     [~,td_cst] = getTDidx(td,'task','CST','result','R');
-    [~,td_cst] = getTDidx(td,'task','CST');
-    if ~isempty(td_cst)
-        % remove aborts
-        abort_idx = isnan(cat(1,td_cst.idx_goCueTime));
-        td_cst(abort_idx) = [];
-        fprintf('Removed %d trials that monkey aborted\n',sum(abort_idx))
-        
-        % trim nans off the end of trials for cursor pos and hand pos
-        for trialnum = 1:length(td_cst)
-            nan_times = any(isnan(getSig(td_cst(trialnum),getTDfields(td_cst,'time'))),2);
-            first_viable_time = find(~nan_times,1,'first');
-            last_viable_time = find(~nan_times,1,'last');
-            td_cst(trialnum) = trimTD(td_cst(trialnum),{'start',first_viable_time-1},{'start',last_viable_time-1});
-        end
-        
-        % fill in CST windows (go cue and reward time seem to be off by some random amount)
-        for trialnum = 1:length(td_cst)
-            cst_window = td_cst(trialnum).cursor_pos(:,1)~=td_cst(trialnum).hand_pos(:,1);
-            td_cst(trialnum).idx_cstStartTime = find(cst_window,1,'first');
-            td_cst(trialnum).idx_cstEndTime = find(cst_window,1,'last');
-        end
-        
-        % fill kinematic signals (filter ahead of differentials)
-        cutoff_freq = 70; %Hz
-        samp_rate = 1/td_cst(1).bin_size;
-        [filt_b,filt_a] = butter(16,cutoff_freq/(samp_rate/2));
-        td_cst = filterSignals(td_cst,struct('signals','hand_pos','filt_a',filt_a,'filt_b',filt_b));
-        td_cst = getDifferential(td_cst,struct('signals','hand_pos','alias','hand_vel'));
-        td_cst = getDifferential(td_cst,struct('signals','hand_vel','alias','hand_acc'));
-        td_cst = getDifferential(td_cst,struct('signals','cursor_pos','alias','cursor_vel'));
-        
-        % reorder for niceness
-        td_cst = reorderTDfields(td_cst);
-        
-        % trim to 0.5s-5.5s 
-%         td_cst = trimTD(td_cst,{'idx_goCueTime',floor(0.5/td_cst(1).bin_size)},{'idx_goCueTime',floor(5.5/td_cst(1).bin_size)});
-        % trim to only CST window
-        td_cst = trimTD(td_cst,'idx_cstStartTime','idx_cstEndTime');
-        
-        % get tolerable instability over time for each trial
-        for trialnum = 1:length(td_cst)
-            trial_length = size(td_cst(trialnum).cursor_pos,1);
-            timevec = (0:(trial_length-1))'*td_cst(trialnum).bin_size;
-            time_left = max_trial_length-timevec;
-            td_cst(trialnum).tol_instab = 1./time_left .* log(cursor_max./abs(td_cst(trialnum).cursor_pos(:,1)+td_cst(trialnum).hand_pos(:,1)));
-        end
-        
-        % find portions of trials that are in the restoration zone
-%         for trialnum = 1:length(td_cst)
-%             % for restoration, cursor velocity and cursor position have opposite sign
-%             is_restoring = (sign((td_cst(trialnum).hand_pos(:,1) + td_cst(trialnum).cursor_pos(:,1)).*td_cst(trialnum).cursor_pos(:,1)) < 0);
-%         end
-
-        %% plot out hand pos vs cursor pos for individual trials
-        figure('defaultaxesfontsize',18,'position',[1544 397 813 839])
-        trialnum = 1;
-        while trialnum<=length(td_cst)
-            clf
-%             phase_ax = subplot(2,2,3);
-            phase_ax = subplot(4,4,[9 10 13 14]);
-            plot([-60 60],[0 0],'-k','linewidth',1)
-            hold on
-            plot([0 0],[-60 60],'-k','linewidth',1)
-            plot([-60 60],[60 -60],'-k','linewidth',1)
-            plot([-50 -50],[-60 60],'-r','linewidth',1)
-            patch([0 0 -60 60 0],[-60 60 60 -60 -60],[0.8 0.8 0.8],'edgecolor','none')
-            if strcmpi(td_cst(trialnum).result,'R')
-                plot([-50 -50],[-60 60],'-g','linewidth',1)
-                plot([50 50],[-60 60],'-g','linewidth',1)
-            else
-                plot([-50 -50],[-60 60],'-r','linewidth',1)
-                plot([50 50],[-60 60],'-r','linewidth',1)
-            end
-            
-            scatter(td_cst(trialnum).cursor_pos(:,1),td_cst(trialnum).hand_pos(:,1),[],1:length(td_cst(trialnum).cursor_pos),'filled')
-%             scatter(td_cst(trialnum).cursor_pos(:,1),td_cst(trialnum).hand_pos(:,1),[],td_cst(trialnum).tol_instab,'filled')
-%             colorbar
-
-%             plot3(td_cst(trialnum).cursor_pos(:,1),td_cst(trialnum).hand_pos(:,1),td_cst(trialnum).hand_vel(:,1),'-k')
-
-            colormap(viridis)
-            
-            axis equal
-            set(gca,'box','off','tickdir','out','xlim',[-60 60],'ylim',[-60 60])
-            
-            xlabel('Cursor position (mm)')
-            ylabel('Hand position (mm)')
-            
-%             hand_ax = subplot(2,2,4);
-            hand_ax = subplot(4,4,[11 12 15 16]);
-            plot([0 6],[0 0],'k','linewidth',1)
-            hold on
-            scatter(td_cst(trialnum).bin_size*(1:length(td_cst(trialnum).cursor_pos)),td_cst(trialnum).hand_pos(:,1),[],1:length(td_cst(trialnum).cursor_pos),'filled')
-%             scatter(td_cst(trialnum).bin_size*(1:length(td_cst(trialnum).cursor_pos)),td_cst(trialnum).tol_instab,[],td_cst(trialnum).tol_instab,'filled')
-            set(gca,'box','off','tickdir','out','ylim',60*[-1 1])
-%             title('Hand position (mm)')
-            xlabel('Time after CST start (s)')
-            
-%             cursor_ax = subplot(2,2,1);
-            cursor_ax = subplot(4,4,[1 2 5 6]);
-            plot([0 0],[0 6],'k','linewidth',1)
-            hold on
-            if strcmpi(td_cst(trialnum).result,'R')
-                plot([-50 -50],[0 6],'-g','linewidth',1)
-                plot([50 50],[0 6],'-g','linewidth',1)
-            else
-                plot([-50 -50],[0 6],'-r','linewidth',1)
-                plot([50 50],[0 6],'-r','linewidth',1)
-            end
-            scatter(...
-                td_cst(trialnum).cursor_pos(:,1),...
-                td_cst(trialnum).bin_size*(1:length(td_cst(trialnum).cursor_pos)),...
-                [],1:length(td_cst(trialnum).cursor_pos),'filled')
-%             scatter(td_cst(trialnum).bin_size*(1:length(td_cst(trialnum).cursor_pos)),td_cst(trialnum).tol_instab,[],td_cst(trialnum).tol_instab,'filled')
-            set(gca,'box','off','tickdir','out','xlim',60*[-1 1])
-%             title('Cursor position (mm)')
-            ylabel('Time after CST start (s)')
-            
-            hand_vel_ax = subplot(4,4,[7 8]);
-            plot([0 6],[0 0],'k','linewidth',1)
-            hold on
-            scatter(td_cst(trialnum).bin_size*(1:length(td_cst(trialnum).cursor_pos)),td_cst(trialnum).hand_vel(:,1),[],1:length(td_cst(trialnum).cursor_pos),'filled')
-            set(gca,'box','off','tickdir','out')
-            
-            hand_acc_ax = subplot(4,4,[3 4]);
-            plot([0 6],[0 0],'k','linewidth',1)
-            hold on
-            scatter(td_cst(trialnum).bin_size*(1:length(td_cst(trialnum).cursor_pos)),td_cst(trialnum).hand_acc(:,1),[],1:length(td_cst(trialnum).cursor_pos),'filled')
-            set(gca,'box','off','tickdir','out')
-            
-            linkaxes([phase_ax cursor_ax],'x')
-            linkaxes([phase_ax hand_ax],'y')
-            linkaxes([hand_ax hand_vel_ax hand_acc_ax],'x')
-            
-            suptitle(strcat(sprintf('%s %s \\lambda = %f, Trial ID: %d',...
-                td_cst(trialnum).monkey,...
-                td_cst(trialnum).date_time,...
-                td_cst(trialnum).lambda,...
-                td_cst(trialnum).trial_id)))
-            
-            while true
-                if waitforbuttonpress==1
-                    charpressed = get(gcf,'CurrentCharacter');
-                    if charpressed == 'h'
-                        trialnum = max(trialnum-1,1);
-                        break;
-                    elseif charpressed == 'l'
-                        trialnum = min(trialnum+1,length(td_cst));
-                        break;
-                    end
-                end
-            end
-        end
-        
-        fprintf('Finished file %d of %d at time %f\n',filenum,length(filenames),toc(filetic))
-    else
+    % Make sure we have CST trials
+    if isempty(td_cst)
         fprintf('Incomplete dataset for file %d\n',filenum)
+        continue
     end
-    control_params = vertcat(control_params_file_cell{:});
+    
+    % prep TD for phase plotting
+    td_cst = trimTD(td_cst,'idx_cstStartTime','idx_cstEndTime');
+    td_cst = calcTolInstab(td_cst);
+    td_cst = findRestorationBlocks(td_cst);
+
+    h = plot_interactive_cst_phase(td_cst);
+    close(h)
+
+    fprintf('Finished file %d of %d at time %f\n',filenum,length(filenames),toc(filetic))
 end
