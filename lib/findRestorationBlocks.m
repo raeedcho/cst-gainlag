@@ -20,4 +20,5 @@ function td_cst = findRestorationBlocks(td_cst)
 
         td_cst(trialnum).idx_restoreStart = idx_restoreStart';
         td_cst(trialnum).idx_restoreEnd = idx_restoreEnd';
+        td_cst(trialnum).is_restoring = is_restoring;
     end
