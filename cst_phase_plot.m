@@ -9,7 +9,7 @@
     
 %% Loop through files
 filetic = tic;
-for filenum = 1:5%length(filenames)
+for filenum = 27%length(filenames)
     td_cst = load_clean_cst_data(fullfile(dataroot,'library',filenames{filenum}));
     
 %     % get rid of unsorted neurons
@@ -40,7 +40,10 @@ for filenum = 1:5%length(filenames)
     td_cst = calcTolInstab(td_cst);
     td_cst = findRestorationBlocks(td_cst);
 
-    h = plot_interactive_cst_phase(td_cst);
+    % make interactive CST phase plot
+    h = plot_interactive_cst_phase(td_cst,struct(...
+        'cursor_sig',{{'cursor_pos',1}},...
+        'hand_sig',{{'gainlag_model',1}}));
     close(h)
 
     fprintf('Finished file %d of %d at time %f\n',filenum,length(filenames),toc(filetic))

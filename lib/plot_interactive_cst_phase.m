@@ -1,7 +1,17 @@
-function [handle] = plot_interactive_cst_phase(td_cst)
+function [handle] = plot_interactive_cst_phase(td_cst,params)
 % plot out hand pos vs cursor pos for individual trials
 % use 'h' and 'l' keys to go back and forward, respectively
 % 'q' to quit
+
+    cursor_sig = {'cursor_pos',1};
+    hand_sig = {'hand_pos',1};
+    if nargin>1
+        assignParams(who,params)
+    end
+    
+    % check signals
+    cursor_sig = check_signals(td_cst,cursor_sig);
+    hand_sig = check_signals(td_cst,hand_sig);
 
     handle = figure('defaultaxesfontsize',18,'position',[1544 397 813 839]);
     colormap(viridis)
@@ -9,17 +19,19 @@ function [handle] = plot_interactive_cst_phase(td_cst)
     while trialnum<=length(td_cst)
         clf
         phase_ax = subplot(4,4,[9 10 13 14]);
-        plot_cst_phase(td_cst(trialnum))
+        plot_cst_phase(td_cst(trialnum),struct(...
+            'cursor_sig',{cursor_sig},...
+            'hand_sig',{hand_sig}))
         xlabel('Cursor position (mm)')
         ylabel('Hand position (mm)')
 
         hand_ax = subplot(4,4,[11 12 15 16]);
-        plot_cst_signal(td_cst(trialnum),struct('sig_to_plot','hand_pos'));
+        plot_cst_signal(td_cst(trialnum),struct('sig_to_plot',{hand_sig}));
         set(gca,'ylim',60*[-1 1])
         xlabel('Time after CST start (s)')
 
         cursor_ax = subplot(4,4,[1 2 5 6]);
-        plot_cst_signal(td_cst(trialnum),struct('sig_to_plot','cursor_pos','flipxy',true))
+        plot_cst_signal(td_cst(trialnum),struct('sig_to_plot',{cursor_sig},'flipxy',true))
         if strcmpi(td_cst(trialnum).result,'R')
             plot([-50 -50],[0 6],'-g','linewidth',1)
             plot([50 50],[0 6],'-g','linewidth',1)
@@ -32,10 +44,11 @@ function [handle] = plot_interactive_cst_phase(td_cst)
 
         hand_vel_ax = subplot(4,4,[7 8]);
 %         plot_cst_signal(td_cst(trialnum),struct('sig_to_plot',{{'hand_pos',2}}))
-        scatter(...
-            td_cst(trialnum).bin_size*(1:length(td_cst(trialnum).cursor_pos)),...
-            -td_cst(trialnum).hand_pos(:,2),...
-            [],1:length(td_cst(trialnum).cursor_pos),'filled')
+%         scatter(...
+%             td_cst(trialnum).bin_size*(1:length(td_cst(trialnum).cursor_pos)),...
+%             -td_cst(trialnum).hand_pos(:,2),...
+%             [],1:length(td_cst(trialnum).cursor_pos),'filled')
+        hist((td_cst(trialnum).hand_pos(:,1)+td_cst(trialnum).cursor_pos(:,1)))
         set(gca,'box','off','tickdir','out')
 
         hand_acc_ax = subplot(4,4,[3 4]);
@@ -60,7 +73,7 @@ function [handle] = plot_interactive_cst_phase(td_cst)
         % link axes for interactivity
         linkaxes([phase_ax cursor_ax],'x')
         linkaxes([phase_ax hand_ax],'y')
-        linkaxes([hand_ax hand_vel_ax hand_acc_ax],'x')
+%         linkaxes([hand_ax hand_vel_ax hand_acc_ax],'x')
 
         suptitle(strcat(sprintf('%s %s \\lambda = %f, Trial ID: %d',...
             td_cst(trialnum).monkey,...
@@ -90,6 +103,10 @@ end
 function plot_cst_phase(trial,params)
 % plot hand position against cursor position, plus all the extras
 
+    cursor_sig = {'cursor_pos',1};
+    hand_sig = {'hand_pos',1};
+    assignParams(who,params)
+
     plot([-60 60],[0 0],'-k','linewidth',1)
     hold on
     plot([0 0],[-60 60],'-k','linewidth',1)
@@ -108,9 +125,9 @@ function plot_cst_phase(trial,params)
     end
 
     scatter(...
-        trial.cursor_pos(:,1),...
-        trial.hand_pos(:,1),...
-        [],1:length(trial.cursor_pos),'filled')
+        get_vars(trial,cursor_sig),...
+        get_vars(trial,hand_sig),...
+        [],1:length(get_vars(trial,cursor_sig)),'filled')
 
     axis equal
     set(gca,'box','off','tickdir','out','xlim',[-60 60],'ylim',[-60 60])
