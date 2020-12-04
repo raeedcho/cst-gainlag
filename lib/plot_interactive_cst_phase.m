@@ -18,19 +18,19 @@ function [handle] = plot_interactive_cst_phase(td_cst,params)
     trialnum = 1;
     while trialnum<=length(td_cst)
         clf
-        phase_ax = subplot(4,4,[9 10 13 14]);
+        phase_ax = subplot(4,4,[1 2 5 6]);
         plot_cst_phase(td_cst(trialnum),struct(...
             'cursor_sig',{cursor_sig},...
             'hand_sig',{hand_sig}))
         xlabel('Cursor position (mm)')
         ylabel('Hand position (mm)')
 
-        hand_ax = subplot(4,4,[11 12 15 16]);
+        hand_ax = subplot(4,4,[3 4 7 8]);
         plot_cst_signal(td_cst(trialnum),struct('sig_to_plot',{hand_sig}));
         set(gca,'ylim',60*[-1 1])
         xlabel('Time after CST start (s)')
 
-        cursor_ax = subplot(4,4,[1 2 5 6]);
+        cursor_ax = subplot(4,4,[9 10 13 14]);
         plot_cst_signal(td_cst(trialnum),struct('sig_to_plot',{cursor_sig},'flipxy',true))
         if strcmpi(td_cst(trialnum).result,'R')
             plot([-50 -50],[0 6],'-g','linewidth',1)
@@ -40,35 +40,47 @@ function [handle] = plot_interactive_cst_phase(td_cst,params)
             plot([50 50],[0 6],'-r','linewidth',1)
         end
         set(gca,'xlim',60*[-1 1])
+        axis ij
         ylabel('Time after CST start (s)')
 
-        hand_vel_ax = subplot(4,4,[7 8]);
+%         hand_vel_ax = subplot(4,4,[7 8]);
 %         plot_cst_signal(td_cst(trialnum),struct('sig_to_plot',{{'hand_pos',2}}))
 %         scatter(...
 %             td_cst(trialnum).bin_size*(1:length(td_cst(trialnum).cursor_pos)),...
 %             -td_cst(trialnum).hand_pos(:,2),...
 %             [],1:length(td_cst(trialnum).cursor_pos),'filled')
-        hist((td_cst(trialnum).hand_pos(:,1)+td_cst(trialnum).cursor_pos(:,1)))
-        set(gca,'box','off','tickdir','out')
+%         hist((td_cst(trialnum).hand_pos(:,1)+td_cst(trialnum).cursor_pos(:,1)))
+%         set(gca,'box','off','tickdir','out')
 
-        hand_acc_ax = subplot(4,4,[3 4]);
+%         hand_acc_ax = subplot(4,4,[3 4]);
 %         plot_cst_signal(td_cst(trialnum),struct('sig_to_plot','hand_acc'))
-        for restorenum = 1:length(td_cst(trialnum).idx_restoreStart)
-            blockstart = td_cst(trialnum).idx_restoreStart(restorenum);
-            blockend = td_cst(trialnum).idx_restoreEnd(restorenum);
-            patch(...
-                td_cst(trialnum).bin_size*[blockstart blockend blockend blockstart],...
-                60*[-1 -1 1 1],...
-                [0.8 0.8 0.8],...
-                'edgecolor','none')
-            hold on
+%         for restorenum = 1:length(td_cst(trialnum).idx_restoreStart)
+%             blockstart = td_cst(trialnum).idx_restoreStart(restorenum);
+%             blockend = td_cst(trialnum).idx_restoreEnd(restorenum);
+%             patch(...
+%                 td_cst(trialnum).bin_size*[blockstart blockend blockend blockstart],...
+%                 60*[-1 -1 1 1],...
+%                 [0.8 0.8 0.8],...
+%                 'edgecolor','none')
+%             hold on
+%         end
+%         plot([0 6],[0 0],'k','linewidth',1)
+%         scatter(...
+%             td_cst(trialnum).bin_size*(1:length(td_cst(trialnum).cursor_pos)),...
+%             (td_cst(trialnum).hand_pos(:,1)+td_cst(trialnum).cursor_pos(:,1)),...
+%             [],1:length(td_cst(trialnum).cursor_pos),'filled')
+%         set(gca,'box','off','tickdir','out')
+
+        % plot gain/lag model simulation
+        if isfield(td_cst,'gainlag_cursor_pos')
+            gainlag_ax = subplot(4,4,[11 12 15 16]);
+            
+            plot_cst_phase(td_cst(trialnum),struct(...
+                'cursor_sig',{{'gainlag_cursor_pos',1}},...
+                'hand_sig',{{'gainlag_hand_pos',1}}))
+            xlabel('Cursor position (mm)')
+            ylabel('Hand position (mm)')
         end
-        plot([0 6],[0 0],'k','linewidth',1)
-        scatter(...
-            td_cst(trialnum).bin_size*(1:length(td_cst(trialnum).cursor_pos)),...
-            (td_cst(trialnum).hand_pos(:,1)+td_cst(trialnum).cursor_pos(:,1)),...
-            [],1:length(td_cst(trialnum).cursor_pos),'filled')
-        set(gca,'box','off','tickdir','out')
 
         % link axes for interactivity
         linkaxes([phase_ax cursor_ax],'x')

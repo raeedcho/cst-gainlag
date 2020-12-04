@@ -39,11 +39,33 @@ for filenum = 27%length(filenames)
     td_cst = trimTD(td_cst,'idx_cstStartTime','idx_cstEndTime');
     td_cst = calcTolInstab(td_cst);
     td_cst = findRestorationBlocks(td_cst);
+    
+    % fit gain/lag models to each trial
+    for trialnum = 1:length(td_cst)
+        [corr_trace,corr_lag] = xcorr(td_cst(trialnum).hand_vel(:,1),td_cst(trialnum).cursor_vel(:,1));
+        corr_trace(corr_lag<0) = inf; % remove negative lag
+        [~,lag_idx] = min(corr_trace);
+        
+        lag = corr_lag(lag_idx)*td_cst(trialnum).bin_size;
+        gain = -sqrt(mean(td_cst(trialnum).hand_pos(:,1).^2))/...
+            sqrt(mean(td_cst(trialnum).cursor_pos(:,1).^2));
+        
+        [t,x,u] = integrate_gainlag_cst(...
+            td_cst(trialnum).lambda,...
+            td_cst(trialnum).cursor_pos(1,1),...
+            td_cst(trialnum).hand_pos(1,1),...
+            gain,...
+            lag);
+        
+        trial_timevec = ((1:length(td_cst(trialnum).hand_pos))-1)'*td_cst(trialnum).bin_size;
+        td_cst(trialnum).gainlag_cursor_pos = interp1(t,x,trial_timevec);
+        td_cst(trialnum).gainlag_hand_pos = interp1(t,u,trial_timevec);
+    end
 
     % make interactive CST phase plot
     h = plot_interactive_cst_phase(td_cst,struct(...
         'cursor_sig',{{'cursor_pos',1}},...
-        'hand_sig',{{'gainlag_model',1}}));
+        'hand_sig',{{'hand_pos',1}}));
     close(h)
 
     fprintf('Finished file %d of %d at time %f\n',filenum,length(filenames),toc(filetic))
