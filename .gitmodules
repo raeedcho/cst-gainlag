@@ -7,3 +7,6 @@
 [submodule "lib/neuron-table"]
 	path = lib/neuron-table
 	url = https://github.com/raeedcho/neuron-table.git
+[submodule "lib/trajectory-tangling"]
+	path = lib/trajectory-tangling
+	url = https://github.com/aarusso/trajectory-tangling.git
