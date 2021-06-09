@@ -55,5 +55,9 @@ function [td_cst] = load_clean_cst_data(filename,params)
     td_cst = getDifferential(td_cst,struct('signals','hand_vel','alias','hand_acc'));
     td_cst = getDifferential(td_cst,struct('signals','cursor_pos','alias','cursor_vel'));
 
+    % add shifted signals
+    shift_bins = floor(-0.1/td_cst(1).bin_size);
+    td_cst = dupeAndShift(td_cst,'cursor_pos',shift_bins,'cursor_vel',shift_bins);
+
     % reorder for niceness
     td_cst = reorderTDfields(td_cst);
