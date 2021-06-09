@@ -4,12 +4,15 @@ function plot_cst_phase(trial,params)
     cursor_sig = {'cursor_pos',1};
     hand_sig = {'hand_pos',1};
     color_sig = {};
+    color_vals = [];
     assignParams(who,params)
     
-    if isempty(color_sig)
-        color_vals = 1:length(get_vars(trial,cursor_sig));
-    else
-        color_vals = get_vars(trial,color_sig);
+    if isempty(color_vals)
+        if isempty(color_sig)
+            color_vals = 1:length(get_vars(trial,cursor_sig));
+        else
+            color_vals = get_vars(trial,color_sig);
+        end
     end
 
     plot([-60 60],[0 0],'-k','linewidth',1)
