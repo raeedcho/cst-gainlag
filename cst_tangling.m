@@ -28,25 +28,6 @@ for filenum = 27%length(filenames)
         continue
     end
     
-    % get rid of unsorted neurons
-    bad_units = td(1).M1_unit_guide(:,2)<=1;
-    % for file 31 only! remove neurons 8,2 and 64,2
-    if contains(td(1).date_time,'2018/06/26')
-        corr_units = [8 2;64 2];
-        bad_units = bad_units | ismember(td(1).M1_unit_guide,corr_units,'rows');
-    end
-    for trialnum = 1:length(td)
-        td(trialnum).M1_spikes = td(trialnum).M1_spikes(:,~bad_units);
-        td(trialnum).M1_unit_guide = td(trialnum).M1_unit_guide(~bad_units,:);
-    end
-    
-    td = removeBadNeurons(td,struct(...
-        'do_fr_check',true,...
-        'min_fr',0.1,...
-        'fr_window',{{'idx_cstStartTime',0;'idx_cstEndTime',0}},...
-        'calc_fr',true,...
-        'use_trials',getTDidx(td,'lambda',lambda_to_use)));
-    
     % smooth data
     td = smoothSignals(td,struct('signals','M1_spikes','width',0.075,'calc_rate',true));
     td = softNormalize(td,struct('signals','M1_spikes','alpha',5));
