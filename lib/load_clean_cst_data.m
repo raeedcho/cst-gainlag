@@ -45,6 +45,17 @@ function [td] = load_clean_cst_data(filename,params)
         td(trial_idx).idx_cstEndTime = find(cst_window,1,'last');
     end
     
+    % fill in CO target directions
+    for trialnum = 1:length(td)
+        if td(trialnum).task=='CO'
+            td(trial_idx).tgtDir = atan2d(...
+                td_co(trialnum).ot_location(2)-td_co(trialnum).ct_location(2),...
+                td_co(trialnum).ot_location(1)-td_co(trialnum).ct_location(1));
+        else
+            td(trialnum).tgtDir = NaN;
+        end
+    end
+    
     % fill kinematic signals (filter ahead of differentials)
     samp_rate = 1/td(1).bin_size;
     [filt_b,filt_a] = butter(16,cutoff_freq/(samp_rate/2));
@@ -56,6 +67,28 @@ function [td] = load_clean_cst_data(filename,params)
     % add shifted signals
     shift_bins = floor(-0.1/td(1).bin_size);
     td = dupeAndShift(td,'cursor_pos',shift_bins,'cursor_vel',shift_bins);
+    
+    % neural data stuff
+    if ~isempty(td(1).M1_unit_guide)
+        % get rid of unsorted neurons
+        bad_units = td(1).M1_unit_guide(:,2)<=1;
+        % for file 31 only! remove neurons 8,2 and 64,2
+        if contains(td(1).date_time,'2018/06/26')
+            corr_units = [8 2;64 2];
+            bad_units = bad_units | ismember(td(1).M1_unit_guide,corr_units,'rows');
+        end
+        for trialnum = 1:length(td)
+            td(trialnum).M1_spikes = td(trialnum).M1_spikes(:,~bad_units);
+            td(trialnum).M1_unit_guide = td(trialnum).M1_unit_guide(~bad_units,:);
+        end
+
+        td = removeBadNeurons(td,struct(...
+            'do_fr_check',true,...
+            'min_fr',0.1,...
+            'fr_window',{{'idx_cstStartTime',0;'idx_cstEndTime',0}},...
+            'calc_fr',true,...
+            'use_trials',getTDidx(td,'task','CST')));
+    end
 
     % reorder for niceness
     td = reorderTDfields(td);
