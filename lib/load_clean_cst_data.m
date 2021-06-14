@@ -47,10 +47,10 @@ function [td] = load_clean_cst_data(filename,params)
     
     % fill in CO target directions
     for trialnum = 1:length(td)
-        if td(trialnum).task=='CO'
-            td(trial_idx).tgtDir = atan2d(...
-                td_co(trialnum).ot_location(2)-td_co(trialnum).ct_location(2),...
-                td_co(trialnum).ot_location(1)-td_co(trialnum).ct_location(1));
+        if strcmpi(td(trialnum).task,'CO')
+            td(trialnum).tgtDir = atan2d(...
+                td(trialnum).ot_location(2)-td(trialnum).ct_location(2),...
+                td(trialnum).ot_location(1)-td(trialnum).ct_location(1));
         else
             td(trialnum).tgtDir = NaN;
         end
