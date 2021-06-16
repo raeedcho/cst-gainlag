@@ -10,25 +10,10 @@
 %% Loop through files
 filetic = tic;
 for filenum = 27%length(filenames)
-    td_cst = load_clean_cst_data(fullfile(dataroot,'library',filenames{filenum}));
+    td = load_clean_cst_data(fullfile(dataroot,'library',filenames{filenum}));
     
-%     % get rid of unsorted neurons
-%     bad_units = td(1).M1_unit_guide(:,2)<=1;
-%     % for file 31 only! remove neurons 8,2 and 64,2
-%     if contains(td(1).date_time,'2018/06/26')
-%         corr_units = [8 2;64 2];
-%         bad_units = bad_units | ismember(td(1).M1_unit_guide,corr_units,'rows');
-%     end
-%     for trialnum = 1:length(td)
-%         td(trialnum).M1_spikes = td(trialnum).M1_spikes(:,~bad_units);
-%         td(trialnum).M1_unit_guide = td(trialnum).M1_unit_guide(~bad_units,:);
-%     end
-%     
-%     if isempty(td(1).M1_unit_guide)
-%         fprintf('Skipping file %d because no spike data...\n',filenum)
-%         continue
-%     end
-%     
+    [~,td_cst]=getTDidx(td,'task','CST');
+    
     % Make sure we have CST trials
     if isempty(td_cst)
         fprintf('Incomplete dataset for file %d\n',filenum)
