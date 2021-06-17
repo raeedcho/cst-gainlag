@@ -170,3 +170,14 @@ for filenum = 27%length(filenames)
 
     fprintf('Finished file %d of %d at time %f\n',filenum,length(filenames),toc(filetic))
 end
+
+%%
+
+figure
+ksdensity(q_co)
+hold on
+ksdensity(q_cst)
+xlabel('Tangling (a.u.)')
+ylabel('Estimated probability density')
+set(gca,'box','off','tickdir','out')
+legend('CO','CST')
