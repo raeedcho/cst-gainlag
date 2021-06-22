@@ -14,7 +14,6 @@ function [td] = load_clean_cst_data(filename,params)
 %       td - TrialData struture with clean CO and CST trials in it
 
     % set up params
-    cutoff_freq = 70; %Hz <- this is the cutoff to get rid of the weird harmonics in velocity and acceleration
     if nargin>1
         assignParams(who,params);
     end

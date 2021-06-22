@@ -21,6 +21,14 @@ function trial_data = convertSMILEtoTD(smile_data,params)
 
     % first get unit guide over all of smile_data
     unit_guide = get_smile_unit_guide(smile_data,params);
+    
+    % fill in missing CST cursor samples
+    params.fill_err = false;
+    try
+        [smile_data,miss4] = errorCursorSaveFix(smile_data);
+    catch ME
+        params.fill_err = true;
+    end
 
     % Loop over smile_data, which is already split up by trial
     td_cell = cell(1,length(smile_data));
@@ -213,14 +221,19 @@ function trial = parse_smile_behavior(in_trial,smile_trial,params)
 
     % assume we're going for millisecond binning
     bin_size = 0.001;
+    fill_err = false;
     assignParams(who,params)
-
+    
     % copy over input trial
     trial = in_trial;
 
     % first get the phasespace marker data
     phasespace_freq = double(smile_trial.TrialData.Marker.frequency);
     phasespace_data = smile_trial.TrialData.Marker.rawPositions;
+    
+    % filtering params
+    filter_n = 50;
+    kaiser_beta = 20;
 
     if ~isempty(phasespace_data)
         visual_timevec = phasespace_data(:,7)/1000;
@@ -230,45 +243,65 @@ function trial = parse_smile_behavior(in_trial,smile_trial,params)
         % resample hand pos data to new timevector
         [temp_resampled,t_resamp] = resample_signals(marker_pos,hand_timevec,struct( ...
             'bin_size',bin_size, ...
-            'samprate',phasespace_freq...
+            'samprate',phasespace_freq,...
+            'filter_n',filter_n,...
+            'kaiser_beta',kaiser_beta...
             ));
         trial.hand_pos = interp1(t_resamp,temp_resampled,trial.timevec);
 
         % resample cursor pos data to new timevector
         [temp_resampled,t_resamp] = resample_signals(marker_pos(:,1:2),visual_timevec,struct( ...
             'bin_size',bin_size, ...
-            'samprate',phasespace_freq...
+            'samprate',phasespace_freq,...
+            'filter_n',filter_n,...
+            'kaiser_beta',kaiser_beta...
             ));
         trial.cursor_pos = interp1(t_resamp,temp_resampled,trial.timevec);
 
-        % if this is a CST trial, we need to replace cursor info during the Control System state
-        if ~isempty(smile_trial.TrialData.Marker.errorCursor)
+        % if this is a CST trial, we need to add cursor info during the Control System state (but only if there wasn't an error filling missing samples)
+        trial.cst_cursor_pos = nan(size(trial.cursor_pos));
+        trial.cst_cursor_vel = nan(size(trial.cursor_pos));
+        if ~fill_err && ~isempty(smile_trial.TrialData.Marker.errorCursor)
             cursor_data = smile_trial.TrialData.Marker.errorCursor;
-            cursor_timevec = cursor_data(:,4)/1000; % this is not necessarily regularly spaced...
+            cursor_timevec = cursor_data(:,4)/1000; % this is not necessarily regularly spaced but should be after the fix
             cursor_pos = cursor_data(:,1:2);
 
-            % interpolate to uniform sampling rate (assuming that average sampling rate is consistent)
-            dt = (cursor_timevec(end)-cursor_timevec(1))/length(cursor_timevec);
-            tGrid = (cursor_timevec(1):dt:cursor_timevec(end))';
-            cursor_pos_interp = zeros(length(tGrid),size(cursor_pos,2));
-            for i=1:size(cursor_pos,2)
-                cursor_pos_interp(:,i) = interp1(cursor_timevec,cursor_pos(:,i),tGrid);
-            end
+            % Note: following section is unnecessary after cursor position samples are filled in with Nicole's fix (errorCursorSaveFix)
+            % % interpolate to uniform sampling rate (assuming that average sampling rate is consistent)
+            % dt = (cursor_timevec(end)-cursor_timevec(1))/length(cursor_timevec);
+            % tGrid = (cursor_timevec(1):dt:cursor_timevec(end))';
+            % cursor_pos_interp = zeros(length(tGrid),size(cursor_pos,2));
+            % for i=1:size(cursor_pos,2)
+            %     cursor_pos_interp(:,i) = interp1(cursor_timevec,cursor_pos(:,i),tGrid);
+            % end
 
-            % resample signals to match new time vector
-            [temp_resampled,t_resamp] = resample_signals(cursor_pos_interp,tGrid,struct( ...
+            % resample signals to match new time vector (assumes a uniform sampling rate)
+            dt = mean(diff(cursor_timevec));
+            [temp_resampled,t_resamp] = resample_signals(cursor_pos,cursor_timevec,struct( ...
                 'bin_size',bin_size, ...
-                'samprate',1/dt...
+                'samprate',1/dt,...
+                'filter_n',filter_n,...
+                'kaiser_beta',kaiser_beta...
                 ));
             cursor_pos_resamp = interp1(t_resamp,temp_resampled,trial.timevec);
 
             % replace old cursor pos with this one where applicable
             error_cursor_idx = ~isnan(cursor_pos_resamp(:,1));
-            trial.cursor_pos(error_cursor_idx) = cursor_pos_resamp(error_cursor_idx);
+            trial.cst_cursor_pos(error_cursor_idx) = cursor_pos_resamp(error_cursor_idx);
+            trial.cursor_pos(error_cursor_idx) = NaN;
+            
+            trial.cst_cursor_vel(error_cursor_idx,1) = trial.lambda*(trial.hand_pos(error_cursor_idx,1)+trial.cst_cursor_pos(error_cursor_idx,1));
+            trial.cst_cursor_vel(error_cursor_idx,2) = zeros(sum(error_cursor_idx),1);
+            
+            % get start and end indices (not the same as go and reward times)
+            trial.idx_cstStartTime = find(error_cursor_idx,1,'first');
+            trial.idx_cstEndTime = find(error_cursor_idx,1,'last');
         end
     else
         trial.hand_pos = [];
         trial.cursor_pos = [];
+        trial.cst_cursor_pos = [];
+        trial.cst_cursor_vel = [];
     end
 end
 
