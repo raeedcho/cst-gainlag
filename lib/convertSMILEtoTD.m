@@ -270,22 +270,30 @@ function trial = parse_smile_behavior(in_trial,smile_trial,params)
         % if this is a CST trial, we need to add cursor info during the Control System state (but only if there wasn't an error filling missing samples)
         trial.cst_cursor_pos = nan(size(trial.cursor_pos));
         trial.cst_cursor_vel = nan(size(trial.cursor_pos));
-        if ~fill_err && ~isempty(smile_trial.TrialData.Marker.errorCursor)
+        if isempty(smile_trial.TrialData.Marker.errorCursor)
             cursor_data = smile_trial.TrialData.Marker.errorCursor;
             cursor_timevec = cursor_data(:,4)/1000; % this is not necessarily regularly spaced but should be after the fix
             cursor_pos = cursor_data(:,1:2);
+            
+            if fill_err
+                warning('Unable to fill missing CST samples for date %s, trying to interpolate samples',trial.date_time)
 
-            % Note: following section is unnecessary after cursor position samples are filled in with Nicole's fix (errorCursorSaveFix)
-            % % interpolate to uniform sampling rate (assuming that average sampling rate is consistent)
-            % dt = (cursor_timevec(end)-cursor_timevec(1))/length(cursor_timevec);
-            % tGrid = (cursor_timevec(1):dt:cursor_timevec(end))';
-            % cursor_pos_interp = zeros(length(tGrid),size(cursor_pos,2));
-            % for i=1:size(cursor_pos,2)
-            %     cursor_pos_interp(:,i) = interp1(cursor_timevec,cursor_pos(:,i),tGrid);
-            % end
+                % Note: following section is unnecessary after cursor position samples are filled in with Nicole's fix (errorCursorSaveFix)
+                % interpolate to uniform sampling rate (assuming an on-average consistent sampling rate)
+                dt = (cursor_timevec(end)-cursor_timevec(1))/length(cursor_timevec);
+                tGrid = (cursor_timevec(1):dt:cursor_timevec(end))';
+                cursor_pos_interp = zeros(length(tGrid),size(cursor_pos,2));
+                for i=1:size(cursor_pos,2)
+                    cursor_pos_interp(:,i) = interp1(cursor_timevec,cursor_pos(:,i),tGrid);
+                end
+                
+                cursor_timevec = tGrid;
+                cursor_pos = cursor_pos_interp;
+            else
+                dt = mean(diff(cursor_timevec));
+            end
 
             % resample signals to match new time vector (assumes a uniform sampling rate)
-            dt = mean(diff(cursor_timevec));
             [temp_resampled,t_resamp] = resample_signals(cursor_pos,cursor_timevec,struct( ...
                 'bin_size',bin_size, ...
                 'samprate',1/dt,...
