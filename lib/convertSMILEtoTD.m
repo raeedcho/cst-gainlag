@@ -374,6 +374,9 @@ function unit_guide = get_smile_unit_guide(smile_data,params)
 
     % concatenate snippet info from all trials of smile_data
     TrialData = horzcat(smile_data.TrialData);
+    for trialnum = 1:length(TrialData)
+        TrialData(trialnum).TDT.timestampUnits = 'ms';
+    end
     TDT = horzcat(TrialData.TDT);
     snippetInfo = horzcat(TDT.snippetInfo);
 
