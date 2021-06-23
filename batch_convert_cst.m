@@ -32,5 +32,7 @@ for filenum = 1:length(dates)
     smile_data = load(fullfile(file_info.folder,file_info.name));
 
     trial_data = convertSMILEtoTD(smile_data.Data,struct('array_alias',{{'Right M1','M1'}}));
-    save(fullfile(savedir,sprintf('%s_%s_TD.mat',monkey,dates{filenum})),'trial_data','-v7.3')
+    save(fullfile(savedir,sprintf('%s_%s_COCST_TD.mat',monkey,dates{filenum})),'trial_data','-v7.3')
+    
+    fprintf('Finished file %d of %d at time %f\n',filenum,length(dates),toc(filetic));
 end
