@@ -34,26 +34,6 @@ function [td] = load_clean_cst_data(filename,params)
         last_viable_time = find(~nan_times,1,'last');
         td(trialnum) = trimTD(td(trialnum),{'start',first_viable_time-1},{'start',last_viable_time-1});
     end
-
-%     % fill in CST windows (go cue and reward time seem to be off by some random amount)
-%     cst_idx = getTDidx(td,'task','CST');
-%     for trialnum = 1:length(cst_idx)
-%         trial_idx = cst_idx(trialnum);
-%         cst_window = td(trial_idx).cursor_pos(:,1)~=td(trial_idx).hand_pos(:,1);
-%         td(trial_idx).idx_cstStartTime = find(cst_window,1,'first');
-%         td(trial_idx).idx_cstEndTime = find(cst_window,1,'last');
-%     end
-%     
-%     % fill in CO target directions
-%     for trialnum = 1:length(td)
-%         if strcmpi(td(trialnum).task,'CO')
-%             td(trialnum).tgtDir = atan2d(...
-%                 td(trialnum).ot_location(2)-td(trialnum).ct_location(2),...
-%                 td(trialnum).ot_location(1)-td(trialnum).ct_location(1));
-%         else
-%             td(trialnum).tgtDir = NaN;
-%         end
-%     end
     
     % fill kinematic signals
     td = getDifferential(td,struct('signals','hand_pos','alias','hand_vel'));
