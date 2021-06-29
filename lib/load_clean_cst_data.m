@@ -38,10 +38,14 @@ function [td] = load_clean_cst_data(filename,params)
     % fill kinematic signals
     td = getDifferential(td,struct('signals','hand_pos','alias','hand_vel'));
     td = getDifferential(td,struct('signals','hand_vel','alias','hand_acc'));
+    td = getDifferential(td,struct('signals','cursor_pos','alias','cursor_vel'));
 
     % add shifted signals
     shift_bins = floor(-0.1/td(1).bin_size);
-    td = dupeAndShift(td,'cst_cursor_pos',shift_bins,'cst_cursor_vel',shift_bins);
+    td = dupeAndShift(td,...
+        'cursor_pos',shift_bins,...
+        'cursor_vel',shift_bins,...
+        'cst_cursor_command',shift_bins);
     
     % neural data stuff
     if ~isempty(td(1).M1_unit_guide)

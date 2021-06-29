@@ -268,9 +268,8 @@ function trial = parse_smile_behavior(in_trial,smile_trial,params)
         trial.cursor_pos = interp1(t_resamp,temp_resampled,trial.timevec);
 
         % if this is a CST trial, we need to add cursor info during the Control System state (but only if there wasn't an error filling missing samples)
-        trial.cst_cursor_pos = nan(size(trial.cursor_pos));
-        trial.cst_cursor_vel = nan(size(trial.cursor_pos));
-        if isempty(smile_trial.TrialData.Marker.errorCursor)
+        trial.cst_cursor_command = nan(size(trial.cursor_pos));
+        if ~isempty(smile_trial.TrialData.Marker.errorCursor)
             cursor_data = smile_trial.TrialData.Marker.errorCursor;
             cursor_timevec = cursor_data(:,4)/1000; % this is not necessarily regularly spaced but should be after the fix
             cursor_pos = cursor_data(:,1:2);
@@ -304,11 +303,10 @@ function trial = parse_smile_behavior(in_trial,smile_trial,params)
 
             % replace old cursor pos with this one where applicable
             error_cursor_idx = ~isnan(cursor_pos_resamp(:,1));
-            trial.cst_cursor_pos(error_cursor_idx) = cursor_pos_resamp(error_cursor_idx);
-            trial.cursor_pos(error_cursor_idx) = NaN;
+            trial.cursor_pos(error_cursor_idx,:) = cursor_pos_resamp(error_cursor_idx,:);
             
-            trial.cst_cursor_vel(error_cursor_idx,1) = trial.lambda*(trial.hand_pos(error_cursor_idx,1)+trial.cst_cursor_pos(error_cursor_idx,1));
-            trial.cst_cursor_vel(error_cursor_idx,2) = zeros(sum(error_cursor_idx),1);
+            trial.cst_cursor_command(error_cursor_idx,1) = trial.lambda*(trial.hand_pos(error_cursor_idx,1)+trial.cursor_pos(error_cursor_idx,1));
+            trial.cst_cursor_command(error_cursor_idx,2) = zeros(sum(error_cursor_idx),1);
             
             % get start and end indices (not the same as go and reward times)
             trial.idx_cstStartTime = find(error_cursor_idx,1,'first');
@@ -317,8 +315,7 @@ function trial = parse_smile_behavior(in_trial,smile_trial,params)
     else
         trial.hand_pos = [];
         trial.cursor_pos = [];
-        trial.cst_cursor_pos = [];
-        trial.cst_cursor_vel = [];
+        trial.cst_cursor_command = [];
     end
 end
 
