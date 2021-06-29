@@ -21,7 +21,7 @@ for filenum = 27%length(filenames)
     end
     
     % prep TD for phase plotting
-    td_cst = trimTD(td_cst,'idx_cstStartTime','idx_cstEndTime');
+    td_cst = trimTD(td_cst,{'idx_cstStartTime',100},{'idx_cstEndTime',0});
     
     % add timevector to each trial
     for trialnum = 1:length(td_cst)
