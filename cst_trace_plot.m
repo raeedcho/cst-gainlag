@@ -58,14 +58,25 @@ for filenum = 1%length(filenames)
             'color',dir_colors(dirnum,:)))
         hold on
     end
-    trial_idx = getTDidx(td_cst,'task','CST','lambda',lambda_to_use);
+    trial_idx = getTDidx(td_cst,'task','CST','lambda',lambda_to_use,'trial_id',159);
     plot_traces(td_cst,struct(...
         'signals',{{'M1_pca',1:3}},...
         'trials_to_use',trial_idx,...
-        'trials_to_plot',trial_idx(randperm(length(trial_idx),10)),...
+        'trials_to_plot',trial_idx(randperm(length(trial_idx),1)),...
         'color',[0 0 0]))
+    
     set(gca,'box','off','tickdir','out')
     axis equal
+    axis off
+    
+    % plot fake axes
+    xlims = get(gca,'xlim');
+    ylims = get(gca,'ylim');
+    zlims = get(gca,'zlim');
+    ax_len = diff(xlims)*0.2;
+    plot3([xlims(1) xlims(1)+ax_len],[ylims(1) ylims(1)],[zlims(1) zlims(1)],'k','linewidth',3)
+    plot3([xlims(1) xlims(1)],[ylims(1) ylims(1)+ax_len],[zlims(1) zlims(1)],'k','linewidth',3)
+    plot3([xlims(1) xlims(1)],[ylims(1) ylims(1)],[zlims(1) zlims(1)+ax_len],'k','linewidth',3)
 
     fprintf('Finished file %d of %d at time %f\n',filenum,length(filenames),toc(filetic))
 end
