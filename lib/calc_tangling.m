@@ -4,8 +4,8 @@ function q = calc_tangling(x,dx)
 %   x - TxP matrix, where rows are time observations and columns are features
 %   dx - TxP matrix of time derivatives of x
 
-% norm_const = 1e-6;
-norm_const = 0.1*sum(var(x));
+norm_const = 1e-6;
+% norm_const = 0.1*sum(var(x));
 q = zeros(size(x,1),1);
 for i = 1:size(x,1)
     temp_tang = zeros(size(x,1),1);
