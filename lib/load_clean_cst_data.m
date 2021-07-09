@@ -36,6 +36,10 @@ function [td] = load_clean_cst_data(filename,params)
     end
     
     % fill kinematic signals
+    cutoff = 30; %Hz
+    samprate = 1/td(1).bin_size;
+    [filt_b,filt_a] = butter(4,cutoff/(samprate/2));
+    td = filterSignals(td,struct('signals','hand_pos','filt_a',filt_a,'filt_b',filt_b));
     td = getDifferential(td,struct('signals','hand_pos','alias','hand_vel'));
     td = getDifferential(td,struct('signals','hand_vel','alias','hand_acc'));
     td = getDifferential(td,struct('signals','cursor_pos','alias','cursor_vel'));
