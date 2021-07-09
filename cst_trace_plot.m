@@ -15,7 +15,7 @@ num_dims = 8;
 start_time = -0.4;
 end_time = 0.4;
 filetic = tic;
-for filenum = 27%length(filenames)
+for filenum = 1%length(filenames)
     td = load_clean_cst_data(fullfile(dataroot,'library',filenames{filenum}));
     
     % Make sure we have CST trials

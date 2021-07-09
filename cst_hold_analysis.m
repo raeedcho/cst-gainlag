@@ -13,7 +13,7 @@
 lambda_to_use = 3.3;
 num_dims = 8;
 filetic = tic;
-for filenum = 27%length(filenames)
+for filenum = 1%length(filenames)
     td = load_clean_cst_data(fullfile(dataroot,'library',filenames{filenum}));
     
     % Make sure we have CST trials
