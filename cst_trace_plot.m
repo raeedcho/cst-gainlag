@@ -33,6 +33,7 @@ for filenum = 1%length(filenames)
     td = smoothSignals(td,struct('signals','M1_spikes','width',0.05,'calc_rate',true));
 %     td = softNormalize(td,struct('signals','M1_spikes','alpha',5));
     td = dimReduce(td,struct('algorithm','pca','signals','M1_spikes','num_dims',num_dims));
+    [td.M1_pca_full] = deal(td.M1_pca);
 %     td = getDifferential(td,struct('signals','M1_pca','alias','M1_pca_diff'));
 
     % trim to time around go cue
@@ -45,6 +46,10 @@ for filenum = 1%length(filenames)
     [~,td_co] = getTDidx(td,'task','CO');
     [~,td_cst] = getTDidx(td,'task','CST');
     
+    % apply pca individually to CST and CO
+    td_co = dimReduce(td_co,struct('algorithm','pca','signals','M1_spikes','num_dims',num_dims));
+    td_cst = dimReduce(td_cst,struct('algorithm','pca','signals','M1_spikes','num_dims',num_dims));
+    
     % plot out neural traces
     dirs = unique(cat(1,td_co.tgtDir));
     dir_colors = linspecer(length(dirs));
@@ -52,7 +57,7 @@ for filenum = 1%length(filenames)
     for dirnum = 1:length(dirs)
         trial_idx = getTDidx(td_co,'task','CO','tgtDir',dirs(dirnum));
         plot_traces(td_co,struct(...
-            'signals',{{'M1_pca',1:3}},...
+            'signals',{{'M1_pca_full',1:3}},...
             'trials_to_use',trial_idx,...
             'trials_to_plot',trial_idx(randperm(length(trial_idx),10)),...
             'color',dir_colors(dirnum,:)))
@@ -60,7 +65,7 @@ for filenum = 1%length(filenames)
     end
     trial_idx = getTDidx(td_cst,'task','CST','lambda',lambda_to_use,'trial_id',159);
     plot_traces(td_cst,struct(...
-        'signals',{{'M1_pca',1:3}},...
+        'signals',{{'M1_pca_full',1:3}},...
         'trials_to_use',trial_idx,...
         'trials_to_plot',trial_idx(randperm(length(trial_idx),1)),...
         'color',[0 0 0]))
