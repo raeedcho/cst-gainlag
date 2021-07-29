@@ -41,6 +41,8 @@ for filenum = 1%length(filenames)
     % trim TD to some arbitrary window after go cue
     td_co = trimTD(td_co,{'idx_goCueTime',150},{'idx_goCueTime',400});
     td_cst = trimTD(td_cst,{'idx_cstStartTime',150},{'idx_cstStartTime',400});
+%     td_co = trimTD(td_co,{'idx_goCueTime',-450},{'idx_goCueTime',0});
+%     td_cst = trimTD(td_cst,{'idx_goCueTime',-450},{'idx_goCueTime',0});
     
     % Get variances
     total_co_var = sum(var(getSig(td_co,'M1_spikes')));
@@ -73,7 +75,7 @@ for filenum = 1%length(filenames)
     plot(lambdas,repmat(total_cst_pr,size(lambdas)),'--k','linewidth',2)
     xlabel('\lambda')
     ylabel('Dimensionality (via PR)')
-    set(gca,'box','off','tickdir','out','xlim',[min(lambdas) max(lambdas)],'ylim',[0 30])
+    set(gca,'box','off','tickdir','out','xlim',[min(lambdas) max(lambdas)],'ylim',[0 35])
 
     fprintf('Finished file %d of %d at time %f\n',filenum,length(filenames),toc(filetic))
 end
