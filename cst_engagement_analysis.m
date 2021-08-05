@@ -29,13 +29,18 @@
     lambda_changes = find(diff(cat(1,td_hold.lambda))~=0)';
     failures = getTDidx(td_hold,'result','F');
     
-    figure;
-    scatter(1:length(td_hold),getSig(td_hold,{'M1_pca',2}),[],cat(1,td_hold.lambda),'filled')
-    colormap(viridis)
+    which_pc = 1;
+    line_colors = linspecer(2);
+    figure('defaultaxesfontsize',10)
+    plot(repmat(failures,2,1)+0.5,[-25;25],'--','color',line_colors(2,:),'linewidth',1.5)
     hold on
-    plot(1:length(td_hold),getSig(td_hold,{'M1_pca',2}),'-k')
-%     plot(repmat(lambda_changes-0.5,2,1),[-25;25],'--g')
-    plot(repmat(failures,2,1)+0.5,[-25;25],'--r')
+    plot(repmat(lambda_changes+0.5,2,1),[-25;25],'--','color',line_colors(1,:),'linewidth',1.5)
+    plot(1:length(td_hold),getSig(td_hold,{'M1_pca',which_pc}),'-k')
+    scatter(1:length(td_hold),getSig(td_hold,{'M1_pca',which_pc}),[],cat(1,td_hold.lambda),'filled')
+    xlabel('Trial number')
+    ylabel(sprintf('Hold activity in PC %d',which_pc))
+    set(gca,'box','off','tickdir','out')
+    colormap(viridis)
     
     % Try to fit a linear model between some dimension of hold activity and the previous lambda
     td_hold(1).prev_lambda = td_hold(1).lambda;
@@ -48,10 +53,14 @@
         'in_signals',{{'M1_pca',1:16}},...
         'out_signals',{{'prev_lambda',1}}));
     
-    figure
-    scatter(cat(1,td_hold.prev_lambda),cat(1,td_hold.linmodel_lambda_pred),[],'k','filled')
+    point_color = repmat([0 0 0],length(td_hold),1);
+    point_color(lambda_changes+2,:) = repmat([0 1 0],length(lambda_changes),1); % hold activity would change only after 
+    figure('defaultaxesfontsize',10)
+    scatter(cat(1,td_hold.prev_lambda),cat(1,td_hold.linmodel_lambda_pred),[],point_color,'filled')
     hold on
     plot([1.5 4.5],[1.5 4.5],'--k')
+    xlabel('Actual previous \lambda')
+    ylabel('Predicted previous \lambda (from hold activity)')
     set(gca,'box','off','tickdir','out')
     axis equal
     
@@ -90,6 +99,18 @@
     td_cst = getModel(td_cst,co_hand_vel_decoder);
     td_co = getModel(td_co,cst_hand_vel_decoder);
     
+    task_to_plot={'co','cst'};
     figure
-    scatter(getSig(td_co,{'hand_vel',1}),getSig(td_co,{'linmodel_co_hand_vel_decoder',1}),[],'k','filled')
-    axis equal
+    for train_task = 1:length(task_to_plot)
+        for test_task = 1:length(task_to_plot)
+            subplot(2,2,(train_task-1)*length(task_to_plot)+test_task)
+            eval(sprintf('test_td=td_%s',task_to_plot{test_task}))
+            
+            scatter(getSig(test_td,{'hand_vel',1}),getSig(test_td,{sprintf('linmodel_%s_hand_vel_decoder',task_to_plot{train_task}),1}),[],'k','filled')
+            xlabel(sprintf('Actual hand velocity in %s',task_to_plot{test_task}))
+            ylabel(sprintf('Predicted hand velocity by %s model',task_to_plot{train_task}))
+            axis equal
+            set(gca,'box','off','tickdir','out','xlim',[-250 350],'ylim',[-250 350])
+        end
+    end
+    
