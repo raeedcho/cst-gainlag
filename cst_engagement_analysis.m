@@ -26,15 +26,15 @@
     
     [td_hold,hold_pca_info] = dimReduce(td_hold,struct('algorithm','pca','signals','M1_spikes'));
     
+    % Hold activity PC 1 plotted with indications of lambda changes and failures
     lambda_changes = find(diff(cat(1,td_hold.lambda))~=0)';
-    failures = getTDidx(td_hold,'result','F');
-    
+    failure_idx = getTDidx(td_hold,'result','F');
     which_pc = 1;
     line_colors = linspecer(2);
     figure('defaultaxesfontsize',10)
-    plot(repmat(failures,2,1)+0.5,[-25;25],'--','color',line_colors(2,:),'linewidth',1.5)
+    plot(repmat(failure_idx,2,1)+0.5,[-25;25],'--','color',line_colors(2,:),'linewidth',1.5)
     hold on
-    plot(repmat(lambda_changes+0.5,2,1),[-25;25],'--','color',line_colors(1,:),'linewidth',1.5)
+%     plot(repmat(lambda_changes+0.5,2,1),[-25;25],'--','color',line_colors(1,:),'linewidth',1.5)
     plot(1:length(td_hold),getSig(td_hold,{'M1_pca',which_pc}),'-k')
     scatter(1:length(td_hold),getSig(td_hold,{'M1_pca',which_pc}),[],cat(1,td_hold.lambda),'filled')
     xlabel('Trial number')
@@ -61,6 +61,28 @@
     plot([1.5 4.5],[1.5 4.5],'--k')
     xlabel('Actual previous \lambda')
     ylabel('Predicted previous \lambda (from hold activity)')
+    set(gca,'box','off','tickdir','out')
+    axis equal
+    
+    % Fit a model between hold activity and number of failures in the last K trials
+    trial_history = 3;
+    is_failure = (cat(1,td_hold.result)=='F');
+    num_prev_failures = conv(is_prev_failure,ones(trial_history,1),'full');
+    num_prev_failures = num2cell(num_prev_failures(1:length(is_failure)));
+    [td_hold.num_prev_failures] = deal(num_prev_failures{:});
+    [td_hold,failure_model] = getModel(td_hold,struct(...
+        'model_type','linmodel',...
+        'model_name','prev_failures',...
+        'in_signals',{{'M1_pca',1:16}},...
+        'out_signals',{{'num_prev_failures',1}}));
+    
+    point_color = repmat([0 0 0],length(td_hold),1);
+    figure('defaultaxesfontsize',10)
+    scatter(cat(1,td_hold.num_prev_failures),cat(1,td_hold.linmodel_prev_failures),[],'k','filled')
+    hold on
+    plot([0 trial_history],[0 trial_history],'--k')
+    xlabel('Actual number of previous failures')
+    ylabel('Predicted previous failures (from hold activity)')
     set(gca,'box','off','tickdir','out')
     axis equal
     
@@ -99,18 +121,18 @@
     td_cst = getModel(td_cst,co_hand_vel_decoder);
     td_co = getModel(td_co,cst_hand_vel_decoder);
     
-    task_to_plot={'co','cst'};
-    figure
-    for train_task = 1:length(task_to_plot)
-        for test_task = 1:length(task_to_plot)
-            subplot(2,2,(train_task-1)*length(task_to_plot)+test_task)
-            eval(sprintf('test_td=td_%s',task_to_plot{test_task}))
-            
-            scatter(getSig(test_td,{'hand_vel',1}),getSig(test_td,{sprintf('linmodel_%s_hand_vel_decoder',task_to_plot{train_task}),1}),[],'k','filled')
-            xlabel(sprintf('Actual hand velocity in %s',task_to_plot{test_task}))
-            ylabel(sprintf('Predicted hand velocity by %s model',task_to_plot{train_task}))
-            axis equal
-            set(gca,'box','off','tickdir','out','xlim',[-250 350],'ylim',[-250 350])
-        end
-    end
+%     task_to_plot={'co','cst'};
+%     figure
+%     for train_task = 1:length(task_to_plot)
+%         for test_task = 1:length(task_to_plot)
+%             subplot(2,2,(train_task-1)*length(task_to_plot)+test_task)
+%             eval(sprintf('test_td=td_%s',task_to_plot{test_task}))
+%             
+%             scatter(getSig(test_td,{'hand_vel',1}),getSig(test_td,{sprintf('linmodel_%s_hand_vel_decoder',task_to_plot{train_task}),1}),[],'k','filled')
+%             xlabel(sprintf('Actual hand velocity in %s',task_to_plot{test_task}))
+%             ylabel(sprintf('Predicted hand velocity by %s model',task_to_plot{train_task}))
+%             axis equal
+%             set(gca,'box','off','tickdir','out','xlim',[-250 350],'ylim',[-250 350])
+%         end
+%     end
     

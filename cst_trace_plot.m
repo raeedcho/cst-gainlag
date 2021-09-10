@@ -57,9 +57,10 @@ for filenum = 1%length(filenames)
     for dirnum = 1:length(dirs)
         trial_idx = getTDidx(td_co,'task','CO','tgtDir',dirs(dirnum));
         plot_traces(td_co,struct(...
-            'signals',{{'M1_pca_full',1:3}},...
+            'signals',{{'M1_pca_full',1:2}},...
             'trials_to_use',trial_idx,...
             'trials_to_plot',trial_idx(randperm(length(trial_idx),10)),...
+            'plot_dim',2,...
             'color',dir_colors(dirnum,:)))
         hold on
     end
@@ -68,6 +69,7 @@ for filenum = 1%length(filenames)
         'signals',{{'M1_pca_full',1:3}},...
         'trials_to_use',trial_idx,...
         'trials_to_plot',trial_idx(randperm(length(trial_idx),1)),...
+        'plot_dim',2,...
         'color',[0 0 0]))
     
     set(gca,'box','off','tickdir','out')
@@ -75,13 +77,13 @@ for filenum = 1%length(filenames)
     axis off
     
     % plot fake axes
-    xlims = get(gca,'xlim');
-    ylims = get(gca,'ylim');
-    zlims = get(gca,'zlim');
-    ax_len = diff(xlims)*0.2;
-    plot3([xlims(1) xlims(1)+ax_len],[ylims(1) ylims(1)],[zlims(1) zlims(1)],'k','linewidth',3)
-    plot3([xlims(1) xlims(1)],[ylims(1) ylims(1)+ax_len],[zlims(1) zlims(1)],'k','linewidth',3)
-    plot3([xlims(1) xlims(1)],[ylims(1) ylims(1)],[zlims(1) zlims(1)+ax_len],'k','linewidth',3)
+%     xlims = get(gca,'xlim');
+%     ylims = get(gca,'ylim');
+%     zlims = get(gca,'zlim');
+%     ax_len = diff(xlims)*0.2;
+%     plot3([xlims(1) xlims(1)+ax_len],[ylims(1) ylims(1)],[zlims(1) zlims(1)],'k','linewidth',3)
+%     plot3([xlims(1) xlims(1)],[ylims(1) ylims(1)+ax_len],[zlims(1) zlims(1)],'k','linewidth',3)
+%     plot3([xlims(1) xlims(1)],[ylims(1) ylims(1)],[zlims(1) zlims(1)+ax_len],'k','linewidth',3)
 
     fprintf('Finished file %d of %d at time %f\n',filenum,length(filenames),toc(filetic))
 end
