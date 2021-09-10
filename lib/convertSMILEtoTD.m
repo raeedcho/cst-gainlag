@@ -24,11 +24,11 @@ function trial_data = convertSMILEtoTD(smile_data,params)
     
     % fill in missing CST cursor samples
     params.fill_err = false;
-    try
+%     try
         [smile_data,miss4] = errorCursorSaveFix(smile_data);
-    catch ME
-        params.fill_err = true;
-    end
+%     catch ME
+%         params.fill_err = true;
+%     end
 
     % Loop over smile_data, which is already split up by trial
     td_cell = cell(1,length(smile_data));
@@ -257,6 +257,7 @@ function trial = parse_smile_behavior(in_trial,smile_trial,params)
             'kaiser_beta',kaiser_beta...
             ));
         trial.hand_pos = interp1(t_resamp,temp_resampled,trial.timevec);
+        trial.rel_hand_pos = trial.hand_pos-trial.ct_location;
 
         % resample cursor pos data to new timevector
         [temp_resampled,t_resamp] = resample_signals(marker_pos(:,1:2),visual_timevec,struct( ...
@@ -266,6 +267,7 @@ function trial = parse_smile_behavior(in_trial,smile_trial,params)
             'kaiser_beta',kaiser_beta...
             ));
         trial.cursor_pos = interp1(t_resamp,temp_resampled,trial.timevec);
+        trial.rel_cursor_pos = trial.cursor_pos-trial.ct_location(1:2);
 
         % if this is a CST trial, we need to add cursor info during the Control System state (but only if there wasn't an error filling missing samples)
         trial.cst_cursor_command = nan(size(trial.cursor_pos));
@@ -304,8 +306,9 @@ function trial = parse_smile_behavior(in_trial,smile_trial,params)
             % replace old cursor pos with this one where applicable
             error_cursor_idx = ~isnan(cursor_pos_resamp(:,1));
             trial.cursor_pos(error_cursor_idx,:) = cursor_pos_resamp(error_cursor_idx,:);
+            trial.rel_cursor_pos(error_cursor_idx,:) = trial.cursor_pos(error_cursor_idx,:)-trial.ct_location(1:2);
             
-            trial.cst_cursor_command(error_cursor_idx,1) = trial.lambda*(trial.hand_pos(error_cursor_idx,1)+trial.cursor_pos(error_cursor_idx,1));
+            trial.cst_cursor_command(error_cursor_idx,1) = trial.lambda*(trial.rel_hand_pos(error_cursor_idx,1)+trial.rel_cursor_pos(error_cursor_idx,1));
             trial.cst_cursor_command(error_cursor_idx,2) = zeros(sum(error_cursor_idx),1);
             
             % get start and end indices (not the same as go and reward times)
