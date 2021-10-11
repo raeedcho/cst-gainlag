@@ -10,8 +10,10 @@
     gpfa_run_dir = 'C:\\Users\\Raeed\\data\\temp\\gpfa_runs';
     
 %% load data
-    filenum = 46;
-    td_preproc = load_clean_cst_data(fullfile(dataroot,'library',filenames{filenum}));
+    file_query = struct(...
+        'monkey','Ford',...
+        'date','20180627');
+    td_preproc = load_clean_cst_data(fullfile(dataroot,'library',sprintf('%s_%s_COCST_TD.mat',file_query.monkey,file_query.date)));
     
 %% Smooth and extract td_cst
     td = td_preproc;
@@ -59,5 +61,13 @@
     
     plotLLVsDim(gpfa_run_dir,'-M1-CO');
     set(gca,'box','off','tickdir','out')
+    title('Center out LL vs. dims')
+    plotLLVsDim(gpfa_run_dir,'-M1-CST');
+    set(gca,'box','off','tickdir','out')
+    title('CST LL vs. dims (full)')
     plotLLVsDim(gpfa_run_dir,'-M1-CST-trialmatch');
     set(gca,'box','off','tickdir','out')
+    title('CST LL vs. dims (trial-matched)')
+    plotLLVsDim(gpfa_run_dir,'-M1-CST-totmatch');
+    set(gca,'box','off','tickdir','out')
+    title('CST LL vs. dims (timepoint-matched)')

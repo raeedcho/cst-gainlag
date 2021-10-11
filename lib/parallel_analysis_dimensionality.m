@@ -38,7 +38,7 @@ function pa_dim = parallel_analysis_dimensionality(X,params)
         xlabel('Eig num')
     end
     
-    pa_dim = find(true_eig_spectrum>boundary_eig_spectrum,1,'last');
+    pa_dim = sum(true_eig_spectrum>boundary_eig_spectrum);
 end
 
 function eig_spectrum = get_covar_eigs(X)
