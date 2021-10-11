@@ -10,12 +10,14 @@
     filenames = horzcat({file_info.name})';
     
 %% Loop through files
-    filenum = 46;
-    td_preproc = load_clean_cst_data(fullfile(dataroot,'library',filenames{filenum}));
+    file_query = struct(...
+        'monkey','Ford',...
+        'date','20180627');
+    td_preproc = load_clean_cst_data(fullfile(dataroot,'library',sprintf('%s_%s_COCST_TD.mat',file_query.monkey,file_query.date)));
     
     % Make sure we have CST trials
-    assert(~isempty(td_preproc),sprintf('Incomplete dataset for file %d\n',filenum))
-    assert(~isempty(td_preproc(1).M1_unit_guide),sprintf('Skipping file %d because no spike data...\n',filenum))
+    assert(~isempty(td_preproc),sprintf('Incomplete dataset for file %s %s\n', file_query.monkey,file_query.date))
+    assert(~isempty(td_preproc(1).M1_unit_guide),sprintf('Skipping file %s %s because no spike data...\n',file_query.monkey,file_query.date))
     
 %% 
     td = td_preproc;

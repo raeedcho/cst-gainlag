@@ -5,28 +5,22 @@
     if ispc
         dataroot = 'C:\Users\Raeed\data\project-data\smile\cst-gainlag';
     end
-
-    file_info = dir(fullfile(dataroot,'library','*COCST*'));
-    filenames = horzcat({file_info.name})';
     
-%% Loop through files
-lambda_to_use = 3.3;
-tangling_timestep = 0.010;
-num_dims = 8;
-filetic = tic;
-for filenum = 1%length(filenames)
-    td = load_clean_cst_data(fullfile(dataroot,'library',filenames{filenum}));
+%% load trial data
+    file_query = struct(...
+        'monkey','Ford',...
+        'date','20180627');
+    td_preproc = load_clean_cst_data(fullfile(dataroot,'library',sprintf('%s_%s_COCST_TD.mat',file_query.monkey,file_query.date)));
     
     % Make sure we have CST trials
-    if isempty(td)
-        fprintf('Incomplete dataset for file %d\n',filenum)
-        continue
-    end
-    
-    if isempty(td(1).M1_unit_guide)
-        fprintf('Skipping file %d because no spike data...\n',filenum)
-        continue
-    end
+    assert(~isempty(td_preproc),sprintf('Incomplete dataset for file %s %s\n', file_query.monkey,file_query.date))
+    assert(~isempty(td_preproc(1).M1_unit_guide),sprintf('Skipping file %s %s because no spike data...\n',file_query.monkey,file_query.date))
+%% Loop through files
+    lambda_to_use = 3.3;
+    tangling_timestep = 0.010;
+    num_dims = 8;
+
+    td=td_preproc;
     
     % smooth data
     td = smoothSignals(td,struct('signals','M1_spikes','width',0.075,'calc_rate',true));
@@ -176,9 +170,6 @@ for filenum = 1%length(filenames)
 %         'cursor_sig',{{'cursor_pos',1}},...
 %         'hand_sig',{{'hand_pos',1}},...
 %         'color_sig',{{'M1_tangling',1}}));
-
-    fprintf('Finished file %d of %d at time %f\n',filenum,length(filenames),toc(filetic))
-end
 
 %%
 
