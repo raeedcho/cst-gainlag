@@ -36,7 +36,7 @@ function handle = make_interactive_td_plot(td,params,plot_params)
             set(gca,plot_params(plotnum).gca_params)
         end
         
-        suptitle(params.suptitle_fcn(td(trialnum)))
+        sgtitle(params.suptitle_fcn(td(trialnum)))
 
         % set up navigation keys
         while true
