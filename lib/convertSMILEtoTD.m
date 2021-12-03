@@ -98,10 +98,12 @@ function trial = parse_smile_meta(in_trial,smile_trial,params)
         ct_reach_state = smile_trial.Parameters.StateTable(strcmpi(vertcat(smile_trial.Parameters.StateTable.stateName),'Reach to Center'));
         center_target_idx = strcmpi(ct_reach_state.StateTargets.names,'co start target');
         trial.ct_location = ct_reach_state.StateTargets.location(center_target_idx,:);
+        trial.ct_location(2) = -trial.ct_location(2); % phasespace inverts y-axis for some reason
     elseif startsWith(smile_trial.Overview.trialName,'CST')
         ct_reach_state = smile_trial.Parameters.StateTable(strcmpi(vertcat(smile_trial.Parameters.StateTable.stateName),'Move to Center'));
         center_target_idx = strcmpi(ct_reach_state.StateTargets.names,'start');
         trial.ct_location = ct_reach_state.StateTargets.location(center_target_idx,:);
+        trial.ct_location(2) = -trial.ct_location(2); % phasespace inverts y-axis for some reason
     end
 
     % get reach target location
@@ -109,10 +111,13 @@ function trial = parse_smile_meta(in_trial,smile_trial,params)
         ot_reach_state = smile_trial.Parameters.StateTable(strcmpi(vertcat(smile_trial.Parameters.StateTable.stateName),'Reach to Target'));
         reach_target_idx = strcmpi(ot_reach_state.StateTargets.names,'co reach target');
         trial.ot_location = ot_reach_state.StateTargets.location(reach_target_idx,:);
+        trial.ot_location(2) = -trial.ot_location(2); % phasespace inverts y-axis for some reason
         
         trial.tgtDir = atan2d(...
             trial.ot_location(2)-trial.ct_location(2),...
             trial.ot_location(1)-trial.ct_location(1));
+
+        trial.tgtMag = sqrt(sum((trial.ot_location-trial.ct_location).^2));
     end
 
     % trial result (0-failure, 1-success, 2-error/abort)
@@ -239,6 +244,7 @@ function trial = parse_smile_behavior(in_trial,smile_trial,params)
     % first get the phasespace marker data
     phasespace_freq = double(smile_trial.TrialData.Marker.frequency);
     phasespace_data = smile_trial.TrialData.Marker.rawPositions;
+    phasespace_mask = [1 -1 1]; %phasespace inverts y axis for some reason
     
     % filtering params
     filter_n = 50;
@@ -247,7 +253,7 @@ function trial = parse_smile_behavior(in_trial,smile_trial,params)
     if ~isempty(phasespace_data)
         visual_timevec = phasespace_data(:,7)/1000;
         hand_timevec = phasespace_data(:,6)/1000;
-        marker_pos = phasespace_data(:,2:4);
+        marker_pos = phasespace_data(:,2:4) * repmat(phasespace_mask,size(phasespace_data,1),1);
 
         % resample hand pos data to new timevector
         [temp_resampled,t_resamp] = resample_signals(marker_pos,hand_timevec,struct( ...
@@ -275,6 +281,7 @@ function trial = parse_smile_behavior(in_trial,smile_trial,params)
             cursor_data = smile_trial.TrialData.Marker.errorCursor;
             cursor_timevec = cursor_data(:,4)/1000; % this is not necessarily regularly spaced but should be after the fix
             cursor_pos = cursor_data(:,1:2);
+            cursor_pos(:,2) = -cursor_pos(:,2); %phasespace inverts y-axis for some reason
             
             if fill_err
                 warning('Unable to fill missing CST samples for date %s, trying to interpolate samples',trial.date_time)
