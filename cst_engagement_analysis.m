@@ -1,4 +1,4 @@
-%%    
+%% Set up
     dataroot = '/data/raeed/project-data/smile/cst-gainlag';
     if ispc
         dataroot = 'C:\Users\Raeed\data\project-data\smile\cst-gainlag';
@@ -7,9 +7,15 @@
     file_info = dir(fullfile(dataroot,'library','*COCST*'));
     filenames = horzcat({file_info.name})';
     
-%% load data
-    filenum = 1;
-    td_preproc = load_clean_cst_data(fullfile(dataroot,'library',filenames{filenum}));
+%% Select a file
+    file_query = struct(...
+        'monkey','Earl',...
+        'date','20190716');
+    td_preproc = load_clean_cst_data(fullfile(dataroot,'library',sprintf('%s_%s_COCST_TD.mat',file_query.monkey,file_query.date)));
+    
+    % Make sure we have CST trials
+    assert(~isempty(td_preproc),sprintf('Incomplete dataset for file %s %s\n', file_query.monkey,file_query.date))
+    assert(~isempty(td_preproc(1).M1_unit_guide),sprintf('Skipping file %s %s because no spike data...\n',file_query.monkey,file_query.date))
     
 %% Smooth and extract td_cst
     td = td_preproc;

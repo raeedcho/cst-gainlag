@@ -29,7 +29,7 @@ function pa_dim = parallel_analysis_dimensionality(X,params)
     boundary_eig_spectrum = prctile(shuffle_eig_spectra,95);
     
     if do_plot
-        figure
+        figure('defaultaxesfontsize',10)
         patch([1:size(X,2) fliplr(1:size(X,2))],[boundary_eig_spectrum zeros(1,size(X,2))],[0.8 0.8 0.8],'edgecolor','none')
         hold on
         plot(true_eig_spectrum,'-k')

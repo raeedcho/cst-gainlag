@@ -9,32 +9,29 @@
     file_info = dir(fullfile(dataroot,'library','*COCST*'));
     filenames = horzcat({file_info.name})';
     
-%% Loop through files
-lambda_to_use = 3.3;
-num_dims = 8;
-filetic = tic;
-for filenum = 1%length(filenames)
-    td = load_clean_cst_data(fullfile(dataroot,'library',filenames{filenum}));
+%% Select a file
+    file_query = struct(...
+        'monkey','Ford',...
+        'date','20180618');
+    td_preproc = load_clean_cst_data(fullfile(dataroot,'library',sprintf('%s_%s_COCST_TD.mat',file_query.monkey,file_query.date)));
     
     % Make sure we have CST trials
-    if isempty(td)
-        fprintf('Incomplete dataset for file %d\n',filenum)
-        continue
-    end
+    assert(~isempty(td_preproc),sprintf('Incomplete dataset for file %s %s\n', file_query.monkey,file_query.date))
+    assert(~isempty(td_preproc(1).M1_unit_guide),sprintf('Skipping file %s %s because no spike data...\n',file_query.monkey,file_query.date))
     
-    if isempty(td(1).M1_unit_guide)
-        fprintf('Skipping file %d because no spike data...\n',filenum)
-        continue
-    end
-    
-    % smooth data
-    td = smoothSignals(td,struct('signals','M1_spikes','width',0.075,'calc_rate',true));
-%     td = softNormalize(td,struct('signals','M1_spikes','alpha',5));
-    td = dimReduce(td,struct('algorithm','pca','signals','M1_spikes','num_dims',num_dims));
-%     td = getDifferential(td,struct('signals','M1_pca','alias','M1_pca_diff'));
+%%
+    num_dims = 8;
+    td = td_preproc;
 
     % trim TD to only center hold portion
     td = trimTD(td,{'idx_goCueTime',-450},{'idx_goCueTime',0});
+
+    % smooth data
+%     td = smoothSignals(td,struct('signals','M1_spikes','width',0.075,'calc_rate',true));
+    td = softNormalize(td,struct('signals','M1_spikes','alpha',5));
+    td = dimReduce(td,struct('algorithm','pca','signals','M1_spikes','num_dims',num_dims));
+%     td = getDifferential(td,struct('signals','M1_pca','alias','M1_pca_diff'));
+
     td_binned = binTD(td,'average');
     
     % split data
@@ -75,6 +72,3 @@ for filenum = 1%length(filenames)
     set(gca,'box','off','tickdir','out')
     axis equal
     title('Hand position - CO in red, CST in viridis')
-
-    fprintf('Finished file %d of %d at time %f\n',filenum,length(filenames),toc(filetic))
-end

@@ -9,32 +9,37 @@
     file_info = dir(fullfile(dataroot,'library','*COCST*'));
     filenames = horzcat({file_info.name})';
     
-%% Loop through files
-lambda_to_use = 3.3;
-num_dims = 8;
-start_time = -0.45;
-end_time = 0.4;
-filetic = tic;
-for filenum = 27%length(filenames)
-    td = load_clean_cst_data(fullfile(dataroot,'library',filenames{filenum}));
+%% Select a file
+    file_query = struct(...
+        'monkey','Earl',...
+        'date','20190716');
+    td_preproc = load_clean_cst_data(fullfile(dataroot,'library',sprintf('%s_%s_COCST_TD.mat',file_query.monkey,file_query.date)));
     
     % Make sure we have CST trials
-    if isempty(td)
-        fprintf('Incomplete dataset for file %d\n',filenum)
-        continue
+    assert(~isempty(td_preproc),sprintf('Incomplete dataset for file %s %s\n', file_query.monkey,file_query.date))
+    assert(~isempty(td_preproc(1).M1_unit_guide),sprintf('Skipping file %s %s because no spike data...\n',file_query.monkey,file_query.date))
+
+%%
+    lambda_to_use = 3.3;
+    num_dims = 8;
+    start_time = -0.45;
+    end_time = 0.4;
+
+    smoothsigs = true;
+    softnorm = true;
+    
+    % preprocess data
+    td = td_preproc;
+    
+
+    if smoothsigs
+        td = smoothSignals(td,struct('signals','M1_spikes','width',0.05,'calc_rate',true));
     end
-    
-    if isempty(td(1).M1_unit_guide)
-        fprintf('Skipping file %d because no spike data...\n',filenum)
-        continue
+
+    if softnorm
+        td = softNormalize(td,struct('signals','M1_spikes','alpha',5));
     end
-    
-    % smooth data
-    td = smoothSignals(td,struct('signals','M1_spikes','width',0.05,'calc_rate',true));
-%     td = softNormalize(td,struct('signals','M1_spikes','alpha',5));
-    td = dimReduce(td,struct('algorithm','pca','signals','M1_spikes','num_dims',num_dims));
-%     td = getDifferential(td,struct('signals','M1_pca','alias','M1_pca_diff'));
-    
+
     % split data
     [~,td_co] = getTDidx(td,'task','CO');
     [~,td_cst] = getTDidx(td,'task','CST');
@@ -57,12 +62,29 @@ for filenum = 27%length(filenames)
     
     % make plot of CIS activity
     timevec = start_time:td_co(1).bin_size:end_time;
-    figure
+    figure('defaultaxesfontsize',10)
     M1_time = cat(3,td_co.M1_dpca_time);
-    plot(timevec,squeeze(M1_time(:,2,:))')
-    hold on
-    plot([0 0],get(gca,'ylim'),'g')
-    set(gca,'box','off','tickdir','out')
+    indiv_dim_subplots = [1,3];
+    for dim_to_plot = 1:length(indiv_dim_subplots)
+        subplot(2,2,indiv_dim_subplots(dim_to_plot))
+        dim_activity = squeeze(M1_time(:,dim_to_plot,:))';
+        plot(timevec,dim_activity,'k','linewidth',0.5)
+        hold on
+        plot(timevec,mean(dim_activity),'r','linewidth',2)
+        plot([0 0],get(gca,'ylim'),'g')
+        set(gca,'box','off','tickdir','out','xtick',[-0.4 0 0.4])
+        ylabel(sprintf('CIS dim %d',dim_to_plot))
+    end
+    xlabel('Time from movement onset (s)')
 
-    fprintf('Finished file %d of %d at time %f\n',filenum,length(filenames),toc(filetic))
-end
+    subplot(2,2,[2,4])
+    plot(squeeze(M1_time(:,1,:)),squeeze(M1_time(:,2,:)),'k','linewidth',0.5)
+    hold on
+    plot(mean(M1_time(:,1,:),3),mean(M1_time(:,2,:),3),'r','linewidth',2)
+    xlabel('CIS dim 1')
+    ylabel('CIS dim 2')
+    set(gca,'box','off','tickdir','out','xtick',[],'ytick',[],'DataAspectRatio',[1 1 1])
+
+    sgtitle(sprintf('%s %s CO CIS dimensions',file_query.monkey,file_query.date))
+
+    % project CST data into CIS dimensions?
