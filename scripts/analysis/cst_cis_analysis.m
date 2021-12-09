@@ -11,8 +11,8 @@
     
 %% Select a file
     file_query = struct(...
-        'monkey','Earl',...
-        'date','20190716');
+        'monkey','Ford',...
+        'date','20180627');
     td_preproc = load_clean_cst_data(fullfile(dataroot,'library',sprintf('%s_%s_COCST_TD.mat',file_query.monkey,file_query.date)));
     
     % Make sure we have CST trials

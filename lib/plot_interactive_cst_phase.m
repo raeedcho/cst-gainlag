@@ -36,7 +36,8 @@ function [handle] = plot_interactive_cst_phase(td_cst,params)
     % hand movement plot
     plot_params(2).plot_loc = 2;
     plot_params(2).plot_fcn = @(trial) plot_cst_signal(trial,struct(...
-        'sig_to_plot',{hand_sig}));
+        'sig_to_plot',{hand_sig},...
+        'color_sig',{color_sig}));
     plot_params(2).xlabel = 'Time after CST start (s)';
     plot_params(2).gca_params = struct('ylim',60*[-1 1]);
     
@@ -44,6 +45,7 @@ function [handle] = plot_interactive_cst_phase(td_cst,params)
     plot_params(3).plot_loc = 3;
     plot_params(3).plot_fcn = @(trial) plot_cst_signal(trial,struct(...
         'sig_to_plot',{cursor_sig},...
+        'color_sig',{color_sig},...
         'flipxy',true));
     plot_params(3).ylabel = 'Time after CST start (s)';
     plot_params(3).gca_params = struct('xlim',60*[-1 1]);
@@ -62,7 +64,7 @@ function [handle] = plot_interactive_cst_phase(td_cst,params)
             trial.M1_pca(:,1),...
             trial.M1_pca(:,2),...
             trial.M1_pca(:,3),...
-            [],trial.M1_tangling,'filled')
+            [],trial.M1_tangling,'filled');
         plot_params(4).gca_params = struct(...
             'box','off',...
             'tickdir','out',...
@@ -196,10 +198,17 @@ function plot_cst_signal(trial,params)
 
     flipxy = false;
     sig_to_plot = '';
+    color_sig = '';
     assignParams(who,params)
     
     sig_data = getSig(trial,sig_to_plot);
     time_data = trial.bin_size*(1:length(trial.cursor_pos));
+
+    if isempty(color_sig)
+        color_sig_vals = 1:length(trial.cursor_pos);
+    else
+        color_sig_vals = getSig(trial,color_sig);
+    end
     
     if flipxy
 %         % plot restoration blocks
@@ -214,10 +223,11 @@ function plot_cst_signal(trial,params)
 %             hold on
 %         end
         plot([0 0],[0 6],'k','linewidth',1)
+        hold on
         scatter(...
             sig_data(:,1),...
             time_data,...
-            [],1:length(trial.cursor_pos),'filled')
+            [],color_sig_vals,'filled')
         axis ij
     else
 %         % plot restoration blocks
@@ -232,10 +242,11 @@ function plot_cst_signal(trial,params)
 %             hold on
 %         end
         plot([0 6],[0 0],'k','linewidth',1)
+        hold on
         scatter(...
             time_data,...
             sig_data(:,1),...
-            [],1:length(trial.cursor_pos),'filled')
+            [],color_sig_vals,'filled')
     end
     set(gca,'box','off','tickdir','out')
 end

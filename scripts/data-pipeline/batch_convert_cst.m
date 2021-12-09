@@ -1,6 +1,6 @@
 %% Set up
 % dataroot = '/mnt/smile-share/Animals/';
-dataroot = 'Z:\\Animals';
+dataroot = 'Y:\\Animals';
 monkey = 'Ford';
 fid = fopen('ford-cst-dates.txt');
 dates = textscan(fid,'%s');
@@ -11,7 +11,7 @@ savedir = 'C:\\Users\\Raeed\\data\\project-data\\smile\\cst-gainlag\\library';
 
 %% go through files
 filetic = tic;
-for filenum = 34:length(dates)
+for filenum = 38:length(dates)
     file_info = dir(fullfile(...
         dataroot,...
         monkey,...

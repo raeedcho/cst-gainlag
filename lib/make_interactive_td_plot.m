@@ -33,23 +33,29 @@ function handle = make_interactive_td_plot(td,params,plot_params)
             plot_params(plotnum).plot_fcn(td(trialnum))
             xlabel(plot_params(plotnum).xlabel)
             ylabel(plot_params(plotnum).ylabel)
+            title(plot_params(plotnum).title)
             set(gca,plot_params(plotnum).gca_params)
         end
         
         sgtitle(params.suptitle_fcn(td(trialnum)))
 
         % set up navigation keys
-        while true
-            if waitforbuttonpress==1
-                charpressed = get(gcf,'CurrentCharacter');
-                if charpressed == 'h'
-                    trialnum = max(trialnum-1,1);
-                    break;
-                elseif charpressed == 'l'
-                    trialnum = min(trialnum+1,length(td));
-                    break;
-                elseif charpressed == 'q'
-                    return
+        if isfield(params,'savefigs') && params.savefigs
+            saveas(handle,fullfile(params.figsavedir,params.figsavefcn(td(trialnum))))
+            trialnum = trialnum+1;
+        else
+            while true
+                if waitforbuttonpress==1
+                    charpressed = get(gcf,'CurrentCharacter');
+                    if charpressed == 'h'
+                        trialnum = max(trialnum-1,1);
+                        break;
+                    elseif charpressed == 'l'
+                        trialnum = min(trialnum+1,length(td));
+                        break;
+                    elseif charpressed == 'q'
+                        return
+                    end
                 end
             end
         end

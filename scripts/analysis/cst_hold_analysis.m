@@ -11,8 +11,8 @@
     
 %% Select a file
     file_query = struct(...
-        'monkey','Ford',...
-        'date','20180618');
+        'monkey','Earl',...
+        'date','20190716');
     td_preproc = load_clean_cst_data(fullfile(dataroot,'library',sprintf('%s_%s_COCST_TD.mat',file_query.monkey,file_query.date)));
     
     % Make sure we have CST trials
@@ -21,17 +21,25 @@
     
 %%
     num_dims = 8;
+    softnorm = false;
+    smoothsigs = false;
     td = td_preproc;
+
+    if smoothsigs
+        td = smoothSignals(td,struct('signals','M1_spikes','width',0.050,'calc_rate',true));
+    end
 
     % trim TD to only center hold portion
     td = trimTD(td,{'idx_goCueTime',-450},{'idx_goCueTime',0});
 
     % smooth data
-%     td = smoothSignals(td,struct('signals','M1_spikes','width',0.075,'calc_rate',true));
-    td = softNormalize(td,struct('signals','M1_spikes','alpha',5));
-    td = dimReduce(td,struct('algorithm','pca','signals','M1_spikes','num_dims',num_dims));
-%     td = getDifferential(td,struct('signals','M1_pca','alias','M1_pca_diff'));
+    if softnorm
+        td = softNormalize(td,struct('signals','M1_spikes','alpha',5));
+    end
 
+    td = dimReduce(td,struct('algorithm','pca','signals','M1_spikes','num_dims',num_dims));
+
+    % get average for each bin
     td_binned = binTD(td,'average');
     
     % split data
@@ -72,3 +80,5 @@
     set(gca,'box','off','tickdir','out')
     axis equal
     title('Hand position - CO in red, CST in viridis')
+
+    sgtitle(sprintf('%s %s hold period activity (50ms smooth)',file_query.monkey,file_query.date))

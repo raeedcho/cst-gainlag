@@ -9,8 +9,8 @@
     
 %% Select a file
     file_query = struct(...
-        'monkey','Earl',...
-        'date','20190716');
+        'monkey','Ford',...
+        'date','20180627');
     td_preproc = load_clean_cst_data(fullfile(dataroot,'library',sprintf('%s_%s_COCST_TD.mat',file_query.monkey,file_query.date)));
     
     % Make sure we have CST trials
@@ -19,13 +19,18 @@
     
 %% Smooth and extract td_cst
     td = td_preproc;
+    softnorm = true;
     % smooth data
-    td = smoothSignals(td,struct('signals','M1_spikes','width',0.075,'calc_rate',true));
+%     td = smoothSignals(td,struct('signals','M1_spikes','width',0.075,'calc_rate',true));
+    % softnorm
+    if softnorm
+        td = softNormalize(td,struct('signals','M1_spikes','alpha',5));
+    end
     
 %% Look for neural engagement signal in center hold period
     [~,td_cst] = getTDidx(td,'task','CST');
     td_hold = trimTD(td_cst,struct(...
-        'idx_start',{{'idx_goCueTime',-425}},...
+        'idx_start',{{'idx_goCueTime',-400}},...
         'idx_end',{{'idx_goCueTime',0}},...
         'remove_short',true));
     td_hold = binTD(td_hold,'average');
@@ -35,18 +40,26 @@
     % Hold activity PC 1 plotted with indications of lambda changes and failures
     lambda_changes = find(diff(cat(1,td_hold.lambda))~=0)';
     failure_idx = getTDidx(td_hold,'result','F');
-    which_pc = 1;
     line_colors = linspecer(2);
     figure('defaultaxesfontsize',10)
-    plot(repmat(failure_idx,2,1)+0.5,[-25;25],'--','color',line_colors(2,:),'linewidth',1.5)
+    ax(1) = subplot(4,1,1);
+    imagesc(cat(1,td_hold.lambda)')
     hold on
-%     plot(repmat(lambda_changes+0.5,2,1),[-25;25],'--','color',line_colors(1,:),'linewidth',1.5)
-    plot(1:length(td_hold),getSig(td_hold,{'M1_pca',which_pc}),'-k')
-    scatter(1:length(td_hold),getSig(td_hold,{'M1_pca',which_pc}),[],cat(1,td_hold.lambda),'filled')
+    plot(repmat(failure_idx,2,1)+0.5,[0.5 1.5],'--','color',line_colors(2,:),'linewidth',1.5)
+    axis off
+    colorbar(ax(1),'NorthOutside')
+    for which_pc = 1:3
+        ax(which_pc+1) = subplot(4,1,which_pc+1);
+        plot(1:length(td_hold),getSig(td_hold,{'M1_pca',which_pc}),'-k')
+        hold on
+        scatter(1:length(td_hold),getSig(td_hold,{'M1_pca',which_pc}),[],cat(1,td_hold.lambda),'filled')
+        ylabel(sprintf('Hold activity in PC %d',which_pc))
+        set(gca,'box','off','tickdir','out')
+        colormap(viridis)
+    end
     xlabel('Trial number')
-    ylabel(sprintf('Hold activity in PC %d',which_pc))
-    set(gca,'box','off','tickdir','out')
-    colormap(viridis)
+    linkaxes(ax,'x')
+    sgtitle(sprintf('%s %s M1 Hold Activity with \\lambda changes and failures',file_query.monkey,file_query.date))
     
     % Try to fit a linear model between some dimension of hold activity and the previous lambda
     td_hold(1).prev_lambda = td_hold(1).lambda;
@@ -69,11 +82,12 @@
     ylabel('Predicted previous \lambda (from hold activity)')
     set(gca,'box','off','tickdir','out')
     axis equal
+    title(sprintf('%s %s M1 hold activity previous \\lambda prediction',file_query.monkey,file_query.date))
     
     % Fit a model between hold activity and number of failures in the last K trials
     trial_history = 3;
     is_failure = (cat(1,td_hold.result)=='F');
-    num_prev_failures = conv(is_prev_failure,ones(trial_history,1),'full');
+    num_prev_failures = conv(is_failure,ones(trial_history,1),'full');
     num_prev_failures = num2cell(num_prev_failures(1:length(is_failure)));
     [td_hold.num_prev_failures] = deal(num_prev_failures{:});
     [td_hold,failure_model] = getModel(td_hold,struct(...
@@ -91,42 +105,43 @@
     ylabel('Predicted previous failures (from hold activity)')
     set(gca,'box','off','tickdir','out')
     axis equal
+    title(sprintf('%s %s M1 hold activity previous failures prediction',file_query.monkey,file_query.date))
     
 %% look for behavioral subspace
-    [~,td_co] = getTDidx(td,'task','CO');
-    [~,td_cst] = getTDidx(td,'task','CST');
-    
-    td_cst = trimTD(td_cst,struct(...
-        'idx_start',{{'idx_cstStartTime',100}},...
-        'idx_end',{{'idx_cstEndTime',0}},...
-        'remove_short',true));
-    
-    td_co = trimTD(td_co,struct(...
-        'idx_start',{{'idx_goCueTime',100}},...
-        'idx_end',{{'idx_goCueTime',500}},...
-        'remove_short',true));
-    
-    [td_cst,cst_pca_info] = dimReduce(td_cst,struct('algorithm','pca','signals','M1_spikes'));
-    [td_co,co_pca_info] = dimReduce(td_co,struct('algorithm','pca','signals','M1_spikes'));
-    
-    td_cst = binTD(td_cst,50);
-    td_co = binTD(td_co,50);
-    
-    [td_cst,cst_hand_vel_decoder] = getModel(td_cst,struct(...
-        'model_type','linmodel',...
-        'model_name','cst_hand_vel_decoder',...
-        'in_signals',{{'M1_pca',1:16}},...
-        'out_signals',{{'hand_vel',1:2}}));
-    
-    [td_co,co_hand_vel_decoder] = getModel(td_co,struct(...
-        'model_type','linmodel',...
-        'model_name','co_hand_vel_decoder',...
-        'in_signals',{{'M1_pca',1:16}},...
-        'out_signals',{{'hand_vel',1:2}}));
-    
-    td_cst = getModel(td_cst,co_hand_vel_decoder);
-    td_co = getModel(td_co,cst_hand_vel_decoder);
-    
+%     [~,td_co] = getTDidx(td,'task','CO');
+%     [~,td_cst] = getTDidx(td,'task','CST');
+%     
+%     td_cst = trimTD(td_cst,struct(...
+%         'idx_start',{{'idx_cstStartTime',100}},...
+%         'idx_end',{{'idx_cstEndTime',0}},...
+%         'remove_short',true));
+%     
+%     td_co = trimTD(td_co,struct(...
+%         'idx_start',{{'idx_goCueTime',100}},...
+%         'idx_end',{{'idx_goCueTime',500}},...
+%         'remove_short',true));
+%     
+%     [td_cst,cst_pca_info] = dimReduce(td_cst,struct('algorithm','pca','signals','M1_spikes'));
+%     [td_co,co_pca_info] = dimReduce(td_co,struct('algorithm','pca','signals','M1_spikes'));
+%     
+%     td_cst = binTD(td_cst,50);
+%     td_co = binTD(td_co,50);
+%     
+%     [td_cst,cst_hand_vel_decoder] = getModel(td_cst,struct(...
+%         'model_type','linmodel',...
+%         'model_name','cst_hand_vel_decoder',...
+%         'in_signals',{{'M1_pca',1:16}},...
+%         'out_signals',{{'hand_vel',1:2}}));
+%     
+%     [td_co,co_hand_vel_decoder] = getModel(td_co,struct(...
+%         'model_type','linmodel',...
+%         'model_name','co_hand_vel_decoder',...
+%         'in_signals',{{'M1_pca',1:16}},...
+%         'out_signals',{{'hand_vel',1:2}}));
+%     
+%     td_cst = getModel(td_cst,co_hand_vel_decoder);
+%     td_co = getModel(td_co,cst_hand_vel_decoder);
+%     
 %     task_to_plot={'co','cst'};
 %     figure
 %     for train_task = 1:length(task_to_plot)

@@ -45,6 +45,7 @@ function trial_data = convertSMILEtoTD(smile_data,params)
             'ct_location',NaN,...
             'ot_location',NaN,...
             'tgtDir',NaN,...
+            'tgtMag',NaN,...
             'idx_startTime',NaN,...
             'idx_ctHoldTime',NaN,...
             'idx_goCueTime',NaN,...
@@ -62,6 +63,11 @@ function trial_data = convertSMILEtoTD(smile_data,params)
         td_cell{trialnum} = parse_smile_spikes(td_cell{trialnum},smile_data(trialnum),unit_guide,params);
 
         td_cell{trialnum} = rmfield(td_cell{trialnum},'timevec');
+    end
+    % check fields for consistency
+    num_fields = cellfun(@(x) length(fieldnames(x)),td_cell);
+    if length(unique(num_fields))>1
+        warning('something has gone wrong')
     end
     trial_data=cat(2,td_cell{:});
     
@@ -253,7 +259,7 @@ function trial = parse_smile_behavior(in_trial,smile_trial,params)
     if ~isempty(phasespace_data)
         visual_timevec = phasespace_data(:,7)/1000;
         hand_timevec = phasespace_data(:,6)/1000;
-        marker_pos = phasespace_data(:,2:4) * repmat(phasespace_mask,size(phasespace_data,1),1);
+        marker_pos = phasespace_data(:,2:4) .* repmat(phasespace_mask,size(phasespace_data,1),1);
 
         % resample hand pos data to new timevector
         [temp_resampled,t_resamp] = resample_signals(marker_pos,hand_timevec,struct( ...
@@ -325,6 +331,8 @@ function trial = parse_smile_behavior(in_trial,smile_trial,params)
     else
         trial.hand_pos = [];
         trial.cursor_pos = [];
+        trial.rel_hand_pos = [];
+        trial.rel_cursor_pos = [];
         trial.cst_cursor_command = [];
     end
 end
