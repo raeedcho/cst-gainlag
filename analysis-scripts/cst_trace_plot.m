@@ -13,9 +13,10 @@
 lambda_to_use = 3.3;
 num_dims = 8;
 start_time = -0.4;
-end_time = 0.4;
+co_end_time = 0.5;
+cst_end_time = 5.5;
 filetic = tic;
-for filenum = 1%length(filenames)
+for filenum = 41%length(filenames)
     td = load_clean_cst_data(fullfile(dataroot,'library',filenames{filenum}));
     
     % Make sure we have CST trials
@@ -37,14 +38,23 @@ for filenum = 1%length(filenames)
 %     td = getDifferential(td,struct('signals','M1_pca','alias','M1_pca_diff'));
 
     % trim to time around go cue
-    td = trimTD(td,struct(...
-        'idx_start',{{'idx_goCueTime',floor(start_time/td(1).bin_size)}},...
-        'idx_end',{{'idx_goCueTime',floor(end_time/td(1).bin_size)}},...
-        'remove_short',true));
+%     td = trimTD(td,struct(...
+%         'idx_start',{{'idx_goCueTime',floor(start_time/td(1).bin_size)}},...
+%         'idx_end','end',...
+%         'remove_short',true));
     
     % split data
     [~,td_co] = getTDidx(td,'task','CO');
     [~,td_cst] = getTDidx(td,'task','CST');
+
+    td_co = trimTD(td_co,struct(...
+        'idx_start',{{'idx_goCueTime',floor(start_time/td(1).bin_size)}},...
+        'idx_end',{{'idx_goCueTime',floor(co_end_time/td(1).bin_size)}},...
+        'remove_short',true));
+    td_cst = trimTD(td_cst,struct(...
+        'idx_start',{{'idx_cstStartTime',floor(start_time/td(1).bin_size)}},...
+        'idx_end',{{'idx_cstStartTime',floor(cst_end_time/td(1).bin_size)}},...
+        'remove_short',true));
     
     % apply pca individually to CST and CO
     td_co = dimReduce(td_co,struct('algorithm','pca','signals','M1_spikes','num_dims',num_dims));
@@ -57,10 +67,10 @@ for filenum = 1%length(filenames)
     for dirnum = 1:length(dirs)
         trial_idx = getTDidx(td_co,'task','CO','tgtDir',dirs(dirnum));
         plot_traces(td_co,struct(...
-            'signals',{{'M1_pca_full',1:2}},...
+            'signals',{{'M1_pca_full',1:3}},...
             'trials_to_use',trial_idx,...
             'trials_to_plot',trial_idx(randperm(length(trial_idx),10)),...
-            'plot_dim',2,...
+            'plot_dim',3,...
             'color',dir_colors(dirnum,:)))
         hold on
     end
@@ -69,7 +79,7 @@ for filenum = 1%length(filenames)
         'signals',{{'M1_pca_full',1:3}},...
         'trials_to_use',trial_idx,...
         'trials_to_plot',trial_idx(randperm(length(trial_idx),1)),...
-        'plot_dim',2,...
+        'plot_dim',3,...
         'color',[0 0 0]))
     
     set(gca,'box','off','tickdir','out')
@@ -77,13 +87,13 @@ for filenum = 1%length(filenames)
     axis off
     
     % plot fake axes
-%     xlims = get(gca,'xlim');
-%     ylims = get(gca,'ylim');
-%     zlims = get(gca,'zlim');
-%     ax_len = diff(xlims)*0.2;
-%     plot3([xlims(1) xlims(1)+ax_len],[ylims(1) ylims(1)],[zlims(1) zlims(1)],'k','linewidth',3)
-%     plot3([xlims(1) xlims(1)],[ylims(1) ylims(1)+ax_len],[zlims(1) zlims(1)],'k','linewidth',3)
-%     plot3([xlims(1) xlims(1)],[ylims(1) ylims(1)],[zlims(1) zlims(1)+ax_len],'k','linewidth',3)
+    xlims = get(gca,'xlim');
+    ylims = get(gca,'ylim');
+    zlims = get(gca,'zlim');
+    ax_len = diff(xlims)*0.2;
+    plot3([xlims(1) xlims(1)+ax_len],[ylims(1) ylims(1)],[zlims(1) zlims(1)],'k','linewidth',3)
+    plot3([xlims(1) xlims(1)],[ylims(1) ylims(1)+ax_len],[zlims(1) zlims(1)],'k','linewidth',3)
+    plot3([xlims(1) xlims(1)],[ylims(1) ylims(1)],[zlims(1) zlims(1)+ax_len],'k','linewidth',3)
 
     fprintf('Finished file %d of %d at time %f\n',filenum,length(filenames),toc(filetic))
 end
