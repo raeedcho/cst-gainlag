@@ -50,7 +50,7 @@
     td_cst = binTD(td_cst,50);    
 
 %% find joint space across both tasks
-    num_dims = 15;
+    num_dims = 10;
 
     % soft normalize and dim reduce separately
     td_co_norm = softNormalize(td_co,struct('signals','M1_spikes_smooth'));
@@ -77,7 +77,7 @@
         td_full(trialnum).M1_pca_full = td_full(trialnum).M1_spikes_smooth * w_new;
     end
 
-%% find private and shared dimensions of neural data across tasks
+    % find private and shared dimensions of neural data across tasks
     % split data again
     [~,td_co] = getTDidx(td_full,'task','CO');
     [~,td_cst] = getTDidx(td_full,'task','CST');
@@ -85,7 +85,17 @@
     M1_state_cst = getSig(td_cst,'M1_pca_full');
 
     alpha_null_space = 1e-4;
-    var_cutoff = 0.05;
+    var_cutoff = 0.025;
     do_plot = true;
 
     [subspaces,projs,out] = SubspaceSplitterKaoOrthGreedy(M1_state_cst,M1_state_co,alpha_null_space,var_cutoff,do_plot);
+
+    % relabel plots
+    subplot(3,3,[1 2])
+    legend({'CST','CO'},'Location','Best','box','off','FontSize',14); 
+    subplot(3,3,3)
+    xlabel('% var CST'); ylabel('% var CO'); 
+    subplot(3,3,6)
+    xlabel('% var CST'); ylabel('% var CO'); 
+    subplot(3,3,[7 8])
+    xticklabels({'CST unique','shared','CO unique'}); 
