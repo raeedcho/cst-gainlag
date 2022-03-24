@@ -26,13 +26,12 @@ function [Subspaces,Projs,out] = SubspaceSplitterKaoOrthGreedy(X1,X2,alphaNullSp
 %   do_plot (optional) : Flag to return summary plot (default = true) 
 
 %%
-% Add toolboxes from:
+% Make sure to add to path the toolboxes from:
 % Jiang, X., Saggar, H., Ryu, S. I., Shenoy, K. V., & Kao, J. C. (2020). 
 % Structure in Neural Activity during Observed and Executed Movements Is 
 % Shared at the Neural Population Level, Not in Single Neurons. Cell Reports, 32(6), 108006.
 % https://doi.org/10.1016/j.celrep.2020.108006
-curdir = cd; 
-addpath([curdir, '\KaoHelpers']); 
+% (found in KaoHelpers)
 
 if nargin < 5 || isempty(do_plot)
     do_plot = true; 
@@ -112,10 +111,15 @@ Qord = [Qf(:,cond_tracker==1) fliplr(Qf(:,cond_tracker==2))];
 %% Split into Unique and Shared
 varexs = [var(X1*Qord)./v1; var(X2*Qord)./v2]*100; % variance explained
 
-% use provided var_cutoff to split
-cumvar = [cumsum(varexs(1,end:-1:1)); cumsum(varexs(2,:))];  
-inds{1} = cumvar(2,:)<(var_cutoff*100); 
-inds{2} = fliplr(cumvar(1,:)<(var_cutoff*100)); 
+% use provided var_cutoff to split subpsaces
+use_cumvar = false;
+if use_cumvar
+    var_vals = [cumsum(varexs(1,end:-1:1)); cumsum(varexs(2,:))];
+else
+    var_vals = [varexs(1,end:-1:1); varexs(2,:)];
+end
+inds{1} = var_vals(2,:)<(var_cutoff*100); 
+inds{2} = fliplr(var_vals(1,:)<(var_cutoff*100));
 inds{3} = ~inds{1}&~inds{2}; 
 
 Subspaces = cellfun(@(x) Qord(:,x),inds,'uni',0); 
