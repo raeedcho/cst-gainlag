@@ -138,8 +138,8 @@ out.axes.sorted = Qord;
 Projs.cond1.sorted = X1*Qord; 
 Projs.cond1.subspaces = cellfun(@(x) X1*x,Subspaces,'uni',0); 
 
-Projs.cond1.sorted = X2*Qord; 
-Projs.cond1.subspaces = cellfun(@(x) X2*x,Subspaces,'uni',0); 
+Projs.cond2.sorted = X2*Qord; 
+Projs.cond2.subspaces = cellfun(@(x) X2*x,Subspaces,'uni',0); 
 
 %% Do plotting if requested
 if do_plot
