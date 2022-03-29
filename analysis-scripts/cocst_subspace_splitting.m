@@ -1,13 +1,10 @@
 % script to run Dekleva subspace splitter on CO and CST data
-
+function cocst_subspace_splitting(file_query,params)
 %% setup
     dataroot = '/data/raeed/project-data/smile/cst-gainlag';
     if ispc
         dataroot = 'C:\Users\Raeed\data\project-data\smile\cst-gainlag';
     end
-
-    file_info = dir(fullfile(dataroot,'library','*COCST*'));
-    filenames = horzcat({file_info.name})';
     
 %% Load a file
     file_query = struct(...
@@ -23,6 +20,11 @@
     % options
     analysis_epoch = 'move';
     smoothsigs = true;
+    num_dims = 10;
+    equalize_samples = false;
+    num_samples = 1500;
+    avg_co_data = false;
+%     assignParams(who,params);
 
     td = td_preproc;
     
@@ -35,54 +37,46 @@
     [~,td_co] = getTDidx(td,'task','CO');
     [~,td_cst] = getTDidx(td,'task','CST');
     
-    lambdas = sort(unique(cat(1,td_cst.lambda)));
-    
     % trim TD to some arbitrary window after go cue
     if strcmpi(analysis_epoch,'move')
-        td_co = trimTD(td_co,{'idx_goCueTime',150},{'idx_goCueTime',400});
-        td_cst = trimTD(td_cst,{'idx_cstStartTime',150},{'idx_cstStartTime',5000});
+        td_co = trimTD(td_co,struct('idx_start',{{'idx_goCueTime',150}},'idx_end',{{'idx_goCueTime',500}},'remove_short',true));
+        td_cst = trimTD(td_cst,struct('idx_start',{{'idx_cstStartTime',150}},'idx_end',{{'idx_cstStartTime',5000}},'remove_short',true));
     elseif strcmpi(analysis_epoch,'hold')
-        td_co = trimTD(td_co,{'idx_goCueTime',-450},{'idx_goCueTime',0});
-        td_cst = trimTD(td_cst,{'idx_goCueTime',-450},{'idx_goCueTime',0});
+        td_co = trimTD(td_co,struct('idx_start',{{'idx_goCueTime',-450}},'idx_end',{{'idx_goCueTime',0}},'remove_short',true));
+        td_cst = trimTD(td_cst,struct('idx_start',{{'idx_goCueTime',-450}},'idx_end',{{'idx_goCueTime',0}},'remove_short',true));
     end
 
     td_co = binTD(td_co,50);
-    td_cst = binTD(td_cst,50);    
+    td_cst = binTD(td_cst,50);
 
-%% find joint space across both tasks
-    num_dims = 10;
-
-    % soft normalize and dim reduce separately
-    td_co_norm = softNormalize(td_co,struct('signals','M1_spikes_smooth'));
-    td_cst_norm = softNormalize(td_cst,struct('signals','M1_spikes_smooth'));
-    [~,pca_co] = dimReduce(td_co_norm,struct(...
-        'algorithm','pca',...
-        'signals','M1_spikes_smooth',...
-        'num_dims',num_dims));
-    [~,pca_cst] = dimReduce(td_cst_norm,struct(...
-        'algorithm','pca',...
-        'signals','M1_spikes_smooth',...
-        'num_dims',num_dims));
-
-    % put spaces together and orthogonalize
-    w_co = pca_co.w(:,1:num_dims);
-    w_cst = pca_cst.w(:,1:num_dims);
-    [w_new,~,~] = svd([w_co w_cst],0);
-
-    % reproject data
-    td_full = cat(2,td_co,td_cst);
-    td_full = softNormalize(td_full,struct('signals','M1_spikes_smooth'));
-    td_full = centerSignals(td_full,struct('signals','M1_spikes_smooth'));
-    for trialnum = 1:length(td_full)
-        td_full(trialnum).M1_pca_full = td_full(trialnum).M1_spikes_smooth * w_new;
+    % get average CO activity
+    td_co_avg = trialAverage(td_co,'tgtDir');
+    deleted_fields = setdiff(fieldnames(td_cst),fieldnames(td_co_avg));
+    for fn = 1:length(deleted_fields)
+        for trialnum = 1:length(td_co_avg)
+            td_co_avg(trialnum).(deleted_fields{fn}) = NaN;
+        end
+    end
+    if avg_co_data
+        td_co = td_co_avg;
     end
 
-    % find private and shared dimensions of neural data across tasks
-    % split data again
-    [~,td_co] = getTDidx(td_full,'task','CO');
-    [~,td_cst] = getTDidx(td_full,'task','CST');
-    M1_state_co = getSig(td_co,'M1_pca_full');
-    M1_state_cst = getSig(td_cst,'M1_pca_full');
+    [td_cell,~] = joint_dim_reduce({td_cst,td_co},struct('signals','M1_spikes_smooth','num_dims',num_dims));
+    td_cst = td_cell{1};
+    td_co = td_cell{2};
+
+    % test...
+    assert(length(unique({td_co.task}))==1)
+    assert(length(unique({td_cst.task}))==1)
+    
+    M1_state_cst = getSig(td_cst,'M1_pca_joint');
+    M1_state_co = getSig(td_co,'M1_pca_joint');
+
+    % take random samples of each set of states to make things even
+    if equalize_samples
+        M1_state_cst = datasample(M1_state_cst,num_samples,'Replace',true);
+        M1_state_co = datasample(M1_state_co,num_samples,'Replace',true);
+    end
 
     alpha_null_space = 1e-4;
     var_cutoff = 0.025;
@@ -99,3 +93,9 @@
     xlabel('% var CST'); ylabel('% var CO'); 
     subplot(3,3,[7 8])
     xticklabels({'CST unique','shared','CO unique'}); 
+
+    % plot out dynamics in each subspace for CST trials? % variance in each subspace as a function of time?
+    
+end
+
+
