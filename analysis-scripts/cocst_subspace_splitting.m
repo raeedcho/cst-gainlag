@@ -61,9 +61,8 @@ function cocst_subspace_splitting(file_query,params)
         td_co = td_co_avg;
     end
 
-    [td_cell,~] = joint_dim_reduce({td_cst,td_co},struct('signals','M1_spikes_smooth','num_dims',num_dims));
-    td_cst = td_cell{1};
-    td_co = td_cell{2};
+    [td_cell,~] = joint_dim_reduce({td_cst,td_co},struct('signals','M1_spikes_smooth','num_dims',num_dims,'combine_before_projection',false));
+    [td_cst,td_co] = deal(td_cell{:});
 
     % test...
     assert(length(unique({td_co.task}))==1)
