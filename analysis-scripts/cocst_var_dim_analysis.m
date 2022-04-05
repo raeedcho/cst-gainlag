@@ -11,8 +11,8 @@
     
 %% Loop through files
     file_query = struct(...
-        'monkey','Ford',...
-        'date','20180627');
+        'monkey','Earl',...
+        'date','20190716');
     td_preproc = load_clean_cst_data(fullfile(dataroot,'library',sprintf('%s_%s_COCST_TD.mat',file_query.monkey,file_query.date)));
     
     % Make sure we have CST trials
@@ -22,7 +22,7 @@
 %% 
     % options
     softnorm = true;
-    analysis_epoch = 'move';
+    analysis_epoch = 'full';
     smoothsigs = false;
 
     td = td_preproc;
@@ -45,6 +45,9 @@
     elseif strcmpi(analysis_epoch,'hold')
         td_co = trimTD(td_co,{'idx_goCueTime',-450},{'idx_goCueTime',0});
         td_cst = trimTD(td_cst,{'idx_goCueTime',-450},{'idx_goCueTime',0});
+    elseif strcmpi(analysis_epoch,'full')
+        td_co = trimTD(td_co,{'idx_goCueTime',-400},{'idx_goCueTime',400});
+        td_cst = trimTD(td_cst,{'idx_goCueTime',-400},{'idx_goCueTime',5000});
     end
 
     td_co = binTD(td_co,50);
