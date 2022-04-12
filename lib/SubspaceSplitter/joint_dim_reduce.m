@@ -3,7 +3,7 @@ function [td_out,w_new] = joint_dim_reduce(td_cell,params)
 
     num_dims = 10;
     signals = '';
-    combine_before_projection = true; %whether to put data together and renormalize before projection into joint space
+    combine_before_projection = false; %whether to put data together and renormalize before projection into joint space
     assignParams(who,params);
 
     % soft normalize and dim reduce separately
