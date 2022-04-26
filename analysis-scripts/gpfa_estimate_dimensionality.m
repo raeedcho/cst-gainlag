@@ -3,7 +3,7 @@
         'monkey','Earl',...
         'date','20190716');
     datadir = 'data';
-    gpfa_run_dir = sprintf('results\\\\gpfa_dimensionality\\\\%s_%s',file_query.monkey,file_query.date);
+    gpfa_run_dir = sprintf('G:\\\\raeed\\\\temp\\\\gpfa_dimensionality\\\\%s_%s',file_query.monkey,file_query.date);
 
     td_preproc = load_clean_cst_data(fullfile(datadir,sprintf('%s_%s_COCST_TD.mat',file_query.monkey,file_query.date)));
     
@@ -27,7 +27,7 @@
     bin_w = 0.02;
     
 %     td_binned = binTD(td,bin_w/td(1).bin_size);
-    for num_dims = 13:25 %[2,5,8,10,15,20,25,30]
+    for num_dims = 27:40 %[2,5,8,10,15,20,25,30]
         runGPFA(td_co,struct(...
             'arrays','M1',...
             'method','gpfa',...

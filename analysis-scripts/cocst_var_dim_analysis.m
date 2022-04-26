@@ -22,7 +22,7 @@
 %% 
     % options
     softnorm = true;
-    analysis_epoch = 'full';
+    analysis_epoch = 'move';
     smoothsigs = false;
 
     td = td_preproc;
@@ -40,13 +40,13 @@
     
     % trim TD to some arbitrary window after go cue
     if strcmpi(analysis_epoch,'move')
-        td_co = trimTD(td_co,{'idx_goCueTime',150},{'idx_goCueTime',400});
+        td_co = trimTD(td_co,{'idx_goCueTime',150},{'idx_goCueTime',500});
         td_cst = trimTD(td_cst,{'idx_cstStartTime',150},{'idx_cstStartTime',5000});
     elseif strcmpi(analysis_epoch,'hold')
         td_co = trimTD(td_co,{'idx_goCueTime',-450},{'idx_goCueTime',0});
         td_cst = trimTD(td_cst,{'idx_goCueTime',-450},{'idx_goCueTime',0});
     elseif strcmpi(analysis_epoch,'full')
-        td_co = trimTD(td_co,{'idx_goCueTime',-400},{'idx_goCueTime',400});
+        td_co = trimTD(td_co,{'idx_goCueTime',-400},{'idx_goCueTime',500});
         td_cst = trimTD(td_cst,{'idx_goCueTime',-400},{'idx_goCueTime',5000});
     end
 
@@ -66,6 +66,8 @@
     total_cst_var = sum(var(getSig(td_cst,'M1_spikes')));
     total_cst_pr = calc_participation_ratio(getSig(td_cst,'M1_spikes'));
     total_cst_pa_dim = parallel_analysis_dimensionality(getSig(td_cst,'M1_spikes'),struct('do_plot','true'));
+
+    % for each lambda...
     lambda_var = zeros(length(lambdas),1);
     lambda_pr = zeros(length(lambdas),1);
     lambda_pa_dim = zeros(length(lambdas),1);
@@ -75,34 +77,53 @@
         lambda_pr(lambdanum) = calc_participation_ratio(getSig(td_lambda,'M1_spikes'));
         lambda_pa_dim(lambdanum) = parallel_analysis_dimensionality(getSig(td_lambda,'M1_spikes'));
     end
+
+    % for random sets of CST trials with the same total amount of data as CO
+    num_shuffles = 45;
+    num_cst_trials = floor(length(td_co)/10);
+    shuffle_var = zeros(num_shuffles,1);
+    shuffle_pr = zeros(num_shuffles,1);
+    shuffle_pa_dim = zeros(num_shuffles,1);
+    for shufflenum = 1:num_shuffles
+        [~,td_shuffle] = getTDidx(td_cst,'rand',num_cst_trials);
+        shuffle_var(shufflenum) = sum(var(getSig(td_shuffle,'M1_spikes')));
+        shuffle_pr(shufflenum) = calc_participation_ratio(getSig(td_shuffle,'M1_spikes'));
+        shuffle_pa_dim(shufflenum) = parallel_analysis_dimensionality(getSig(td_shuffle,'M1_spikes'));
+    end
     
     %% plot out summaries
     figure('defaultaxesfontsize',18)
+    colors = linspecer(2);
+    cst_color = colors(1,:);
+    co_color = colors(2,:);
 
     % plot variancess
     subplot(3,1,1)
-    plot(lambdas,lambda_var,'-k','linewidth',2)
+    plot(lambdas,lambda_var,'-','linewidth',2,'color',cst_color)
     hold on
-    plot(lambdas,repmat(total_co_var,size(lambdas)),'--r','linewidth',2)
-    plot(lambdas,repmat(total_cst_var,size(lambdas)),'--k','linewidth',2)
+    plot(lambdas,repmat(total_co_var,size(lambdas)),'--r','linewidth',2,'color',co_color)
+    plot(lambdas,repmat(total_cst_var,size(lambdas)),'--b','linewidth',2,'color',cst_color)
+    plot(lambdas,repmat(mean(shuffle_var),size(lambdas)),'--','linewidth',2,'color',cst_color*0.5)
     title('Neural variance')
     set(gca,'box','off','tickdir','out','xlim',[min(lambdas) max(lambdas)],'xtick',[])
     
     % plot PRs
     subplot(3,1,2)
-    plot(lambdas,lambda_pr,'-k','linewidth',2)
+    plot(lambdas,lambda_pr,'-','linewidth',2,'color',cst_color)
     hold on
-    plot(lambdas,repmat(total_co_pr,size(lambdas)),'--r','linewidth',2)
-    plot(lambdas,repmat(total_cst_pr,size(lambdas)),'--k','linewidth',2)
+    plot(lambdas,repmat(total_co_pr,size(lambdas)),'--','linewidth',2,'color',co_color)
+    plot(lambdas,repmat(total_cst_pr,size(lambdas)),'--','linewidth',2,'color',cst_color)
+    plot(lambdas,repmat(mean(shuffle_pr),size(lambdas)),'--','linewidth',2,'color',cst_color*0.5)
     title('Dimensionality (via PR)')
     set(gca,'box','off','tickdir','out','xlim',[min(lambdas) max(lambdas)],'xtick',[])
     
     % plot PA dims
     subplot(3,1,3)
-    plot(lambdas,lambda_pa_dim,'-k','linewidth',2)
+    plot(lambdas,lambda_pa_dim,'-','linewidth',2,'color',cst_color)
     hold on
-    plot(lambdas,repmat(total_co_pa_dim,size(lambdas)),'--r','linewidth',2)
-    plot(lambdas,repmat(total_cst_pa_dim,size(lambdas)),'--k','linewidth',2)
+    plot(lambdas,repmat(total_co_pa_dim,size(lambdas)),'--','linewidth',2,'color',co_color)
+    plot(lambdas,repmat(total_cst_pa_dim,size(lambdas)),'--','linewidth',2,'color',cst_color)
+    plot(lambdas,repmat(mean(shuffle_pa_dim),size(lambdas)),'--','linewidth',2,'color',cst_color*0.5)
     xlabel('\lambda')
     title('Dimensionality (via parallel ananlysis)')
     set(gca,'box','off','tickdir','out','xlim',[min(lambdas) max(lambdas)])
