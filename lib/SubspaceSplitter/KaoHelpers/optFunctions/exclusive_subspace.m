@@ -1,4 +1,4 @@
-function [Q,flag] = exclusive_subspace(C1,C2,d1,alphaNullSpace,tol_cutoff)
+function [Q,flag] = exclusive_subspace(C1,C2,d1,alphaNullSpace,tol_cutoff,var_data2)
 % C1 , C2: covariance matrices for two conditions, in my analysis I always
 % let them to have the same dimension
 % d1: dimensionality of output Q
@@ -48,6 +48,9 @@ function [Q,flag] = exclusive_subspace(C1,C2,d1,alphaNullSpace,tol_cutoff)
     [V,D]=eig(C2);
     Qstart = V(:,1:d1);
     D = diag(D);
+    if nargin > 5
+        sumevals2 = var_data2;
+    end
     min_var_proj = sum(D(1:d1))/sumevals2;
     if(min_var_proj > alphaNullSpace)
         Q = Qstart;

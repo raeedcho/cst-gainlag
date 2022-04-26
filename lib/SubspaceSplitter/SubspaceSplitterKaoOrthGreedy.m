@@ -60,13 +60,13 @@ for i = 1:(d-1) % loop through dimensions
 
     flag = -1; alphanull = alphaNullSpace; % initialize params
     while flag < 0 % try using defined alphaNullSpace. If it fails, increase and try again
-        [Q1,flag] = exclusive_subspace(cov(data1),cov(data2),1,alphanull,tol_cutoff); 
+        [Q1,flag] = exclusive_subspace(cov(data1),cov(data2),1,alphanull,tol_cutoff,v2); 
         alphanull = alphanull*1.1; % increase by 10%
     end
 
     flag = -1; alphanull = alphaNullSpace; 
     while flag < 0
-        [Q2,flag] = exclusive_subspace(cov(data2),cov(data1),1,alphanull,tol_cutoff); 
+        [Q2,flag] = exclusive_subspace(cov(data2),cov(data1),1,alphanull,tol_cutoff,v1); 
         alphanull = alphanull*1.1; 
     end
 

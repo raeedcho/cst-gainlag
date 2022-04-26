@@ -77,7 +77,8 @@ function cocst_subspace_splitting(file_query,params)
         M1_state_co = datasample(M1_state_co,num_samples,'Replace',true);
     end
 
-    alpha_null_space = 1e-4;
+    %% run the splitting
+    alpha_null_space = 0.01;
     var_cutoff = 0.025;
     do_plot = true;
 
@@ -93,8 +94,35 @@ function cocst_subspace_splitting(file_query,params)
     subplot(3,3,[7 8])
     xticklabels({'CST unique','shared','CO unique'}); 
 
-    % plot out dynamics in each subspace for CST trials? % variance in each subspace as a function of time?
+    % reproject
+    td_cst = split_project_subspaces(td_cst,subspaces);
+    td_co = split_project_subspaces(td_co,subspaces);
+
+    %% plot out dynamics in each subspace for CST trials? % variance in each subspace as a function of time?
+    trial = datasample(td_cst,1);
+    figure
+    tiles = tiledlayout(4,1,'TileSpacing','compact');
+    nexttile
+    plot(trial.hand_pos,'r','linewidth',2)
+    hold on
+    plot(trial.hand_pos,'b','linewidth',2)
+    ylabel('Hand or cursor position')
+    legend({'Hand','Cursor'},'Location','Best','box','off','fontsize',14)
+
+    nexttile
     
+    
+end
+
+function td_out = split_project_subspaces(td,subspaces)
+    td_out = td;
+    for trialnum = 1:length(td_out)
+        td_out(trialnum).M1_cst_private = td_out(trialnum).M1_pca_joint * subspaces{1};
+        td_out(trialnum).M1_co_private = td_out(trialnum).M1_pca_joint * subspaces{2};
+        td_out(trialnum).M1_cocst_shared = td_out(trialnum).M1_pca_joint * subspaces{3};
+
+%         td_out(trialnum).M1_cst_private_var
+    end
 end
 
 
