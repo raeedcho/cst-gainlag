@@ -60,6 +60,7 @@ function trial_data = convertSMILEtoTD(smile_data,params)
         td_cell{trialnum} = parse_smile_meta(td_cell{trialnum},smile_data(trialnum),params);
         td_cell{trialnum} = parse_smile_events(td_cell{trialnum},smile_data(trialnum),params);
         td_cell{trialnum} = parse_smile_behavior(td_cell{trialnum},smile_data(trialnum),params);
+        td_cell{trialnum} = parse_smile_eye_data(td_cell{trialnum},smile_data(trialnum),params);
         td_cell{trialnum} = parse_smile_spikes(td_cell{trialnum},smile_data(trialnum),unit_guide,params);
 
         td_cell{trialnum} = rmfield(td_cell{trialnum},'timevec');
@@ -334,6 +335,45 @@ function trial = parse_smile_behavior(in_trial,smile_trial,params)
         trial.rel_hand_pos = [];
         trial.rel_cursor_pos = [];
         trial.cst_cursor_command = [];
+    end
+end
+
+function trial = parse_smile_eye_data(in_trial,smile_trial,params)
+    % parse out eye tracking (eye position and pupil diameter) from smile data struct
+    % assumes in_trial has timevec based on the endTime found in parse_smile_events
+
+    assert(isfield(in_trial,'timevec'),'Missing temporary timevector in trial data for some reason...')
+
+    % assert length of analog channels divided by 1000 matches the end time of timevec
+    assert(...
+        size(smile_trial.TrialData.analogData,1)/double(1e3)==in_trial.timevec(end),...
+        'Length of analog channel data does not match length of trial time...'...
+        )
+
+    % assume we're going for millisecond binning
+    bin_size = 0.001;
+    fill_err = false;
+    assignParams(who,params)
+    
+    % copy over input trial
+    trial = in_trial;
+
+    % check to make sure eye tracking data is there
+    eye_channel_names = {...
+        'Left Eye X',...
+        'Left Eye Y',...
+        'Right Eye X',...
+        'Right Eye Y',...
+        'Left Pupil',...
+        'Right Pupil'...
+    };
+    all_channel_names = smile_trial.Definitions.analogChannelNames;
+    if ~all(ismember(eye_channel_names,all_channel_names))
+        warning('Missing some or all of the eye data channels')
+    end
+
+    for eye_channel_num = 1:length(eye_channel_names)
+        chan_idx = strcmpi(all_channel_names,eye_channel_names{eye_channel_num});
     end
 end
 
