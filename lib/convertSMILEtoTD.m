@@ -269,7 +269,7 @@ function trial = parse_smile_behavior(in_trial,smile_trial,params)
             'filter_n',filter_n,...
             'kaiser_beta',kaiser_beta...
             ));
-        trial.hand_pos = interp1(t_resamp,temp_resampled,trial.timevec);
+        trial.hand_pos = interp1(t_resamp,temp_resampled,trial.timevec');
         trial.rel_hand_pos = trial.hand_pos-trial.ct_location;
 
         % resample cursor pos data to new timevector
@@ -279,7 +279,7 @@ function trial = parse_smile_behavior(in_trial,smile_trial,params)
             'filter_n',filter_n,...
             'kaiser_beta',kaiser_beta...
             ));
-        trial.cursor_pos = interp1(t_resamp,temp_resampled,trial.timevec);
+        trial.cursor_pos = interp1(t_resamp,temp_resampled,trial.timevec');
         trial.rel_cursor_pos = trial.cursor_pos-trial.ct_location(1:2);
 
         % if this is a CST trial, we need to add cursor info during the Control System state (but only if there wasn't an error filling missing samples)
@@ -315,7 +315,7 @@ function trial = parse_smile_behavior(in_trial,smile_trial,params)
                 'filter_n',filter_n,...
                 'kaiser_beta',kaiser_beta...
                 ));
-            cursor_pos_resamp = interp1(t_resamp,temp_resampled,trial.timevec);
+            cursor_pos_resamp = interp1(t_resamp,temp_resampled,trial.timevec');
 
             % replace old cursor pos with this one where applicable
             error_cursor_idx = ~isnan(cursor_pos_resamp(:,1));
@@ -343,37 +343,89 @@ function trial = parse_smile_eye_data(in_trial,smile_trial,params)
     % assumes in_trial has timevec based on the endTime found in parse_smile_events
 
     assert(isfield(in_trial,'timevec'),'Missing temporary timevector in trial data for some reason...')
-
-    % assert length of analog channels divided by 1000 matches the end time of timevec
-    assert(...
-        size(smile_trial.TrialData.analogData,1)/double(1e3)==in_trial.timevec(end),...
-        'Length of analog channel data does not match length of trial time...'...
-        )
-
-    % assume we're going for millisecond binning
+    
+    % params
     bin_size = 0.001;
-    fill_err = false;
+    blink_thresh = -9;
     assignParams(who,params)
     
     % copy over input trial
     trial = in_trial;
 
-    % check to make sure eye tracking data is there
-    eye_channel_names = {...
-        'Left Eye X',...
-        'Left Eye Y',...
-        'Right Eye X',...
-        'Right Eye Y',...
-        'Left Pupil',...
-        'Right Pupil'...
-    };
+    % assert length of analog channel data matches the timevec
+    % (tests millisecond timing assumption, mostly. Could be off by one maybe.)
+    analog_chan_timevec = (1:size(smile_trial.TrialData.analogData,1))'/double(1e3);
+    assert(...
+        analog_chan_timevec(end)==in_trial.timevec(end),...
+        'Length of analog channel data does not match length of trial time...'...
+    )
+
+    % map out correspondence between new signal name and old channel names
+    eye_sig_map = struct(...
+        'left_eye_pos',{{'Left Eye X','Left Eye Y'}},...
+        'left_pupil',{{'Left Pupil'}}...
+    );
     all_channel_names = smile_trial.Definitions.analogChannelNames;
-    if ~all(ismember(eye_channel_names,all_channel_names))
-        warning('Missing some or all of the eye data channels')
+    eye_sig_names = fieldnames(eye_sig_map);
+
+    % extract each signal
+    blink_mask = true(length(trial.timevec),1);
+    for eye_sig_num = 1:length(eye_sig_names)
+        sig_name = eye_sig_names{eye_sig_num};
+        channel_names = eye_sig_map.(sig_name);
+        if ~all(ismember(channel_names,all_channel_names))
+            warning('Missing part of %s signal',sig_name)
+        end
+
+        chan_idx = ismember(all_channel_names,channel_names);
+        chan_data = smile_trial.TrialData.analogData(:,chan_idx);
+
+        if ~isclose(bin_size,1e-3)
+            % resample signals to new bin size
+            warning('Resampling signals to new bin size...not sure if this will work well')
+            [binned_chan_data,t_binned] = resample_signals(chan_data,analog_chan_timevec,struct( ...
+                'bin_size',bin_size, ...
+                'samprate',1e3,...
+                'filter_n',filter_n,...
+                'kaiser_beta',kaiser_beta...
+            ));
+        else
+            % already at the right sampling rate, just pass through
+            binned_chan_data = chan_data;
+            t_binned=analog_chan_timevec;
+        end
+
+        % align to timevec using interpolation
+        % (this should probably do nothing, but is here to make sure things play well)
+        sig_data = interp1(t_binned,binned_chan_data,trial.timevec');
+
+        % first point will be extrapolated, since we don't have time 0
+        % so we look for other extrapolations
+        if any(any(isnan(sig_data(2:end,:))))
+            warning('Probably some extrapolation going on in the eye data...')
+        end
+
+        % rule in non-blink points through mask (if all signals are below thresh, mask them)
+        blink_mask = blink_mask & all(sig_data<blink_thresh,2);
+
+        % flip y position
+        if ismember('Left Eye Y',channel_names)
+            flip_idx = ismember(channel_names,'Left Eye Y');
+            sig_data(:,flip_idx) = -sig_data(:,flip_idx);
+        end
+
+        % assign to trial data
+        trial.(sig_name) = sig_data;
     end
 
-    for eye_channel_num = 1:length(eye_channel_names)
-        chan_idx = strcmpi(all_channel_names,eye_channel_names{eye_channel_num});
+%     if any(trial.left_pupil<blink_thresh)
+%         fprintf('we have a blink')
+%     end
+
+    % remove eye blinks
+    for eye_sig_num = 1:length(eye_sig_names)
+        sig_name = eye_sig_names{eye_sig_num};
+        trial.(sig_name)(blink_mask,:) = NaN;
     end
 end
 
@@ -444,4 +496,11 @@ function unit_guide = get_smile_unit_guide(smile_data,params)
     else
         unit_guide = [-1 -1];
     end
+end
+
+function equality = isclose(A,B)
+    % function to compare floating point numbers given a tolerance
+    
+    tol = 1e-10; % tolerance for floating point comparisons
+    equality = abs(A-B)<tol; 
 end
