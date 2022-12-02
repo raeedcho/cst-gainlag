@@ -19,8 +19,21 @@ function trial_data = convertSMILEtoTD(smile_data,params)
         params = struct();
     end
 
+    num_random_targs=8;
+    array_name = 'MC';
+    assignParams(who,params);
+
     % first get unit guide over all of smile_data
     unit_guide = get_smile_unit_guide(smile_data,params);
+
+    % split up M1 and PMd for Prez data
+    % ch 1-32 & 97-128 are PMd
+    % ch 33-96 are M1
+    split_unit_guide_rows = struct(...
+        'M1',unit_guide(:,1)>=33 & unit_guide(:,1)<=96, ...
+        'PMd',unit_guide(:,1)<32 | unit_guide(:,1)>96 ...
+    );
+    
     
     % fill in missing CST cursor samples
     params.fill_err = false;
@@ -49,6 +62,7 @@ function trial_data = convertSMILEtoTD(smile_data,params)
             'idx_pretaskHoldTime',NaN,...
             'idx_goCueTime',NaN,...
             'idx_rtgoCueTimes',NaN,...
+            'idx_rtHoldTimes',NaN,...
             'idx_cstStartTime',NaN,...
             'idx_cstEndTime',NaN,...
             'idx_rewardTime',NaN,...
@@ -62,6 +76,19 @@ function trial_data = convertSMILEtoTD(smile_data,params)
         td_cell{trialnum} = parse_smile_eye_data(td_cell{trialnum},smile_data(trialnum),params);
         td_cell{trialnum} = parse_smile_spikes(td_cell{trialnum},smile_data(trialnum),unit_guide,params);
 
+        td_cell{trialnum} = assign_aborts(td_cell{trialnum});
+
+        % split up M1 and PMd channels
+        arrays = fieldnames(split_unit_guide_rows);
+        for arraynum = 1:length(arrays)
+            split_array_name = arrays{arraynum};
+            array_unit_guide_rows = split_unit_guide_rows.(split_array_name);
+            td_cell{trialnum}.(sprintf('%s_unit_guide',split_array_name)) = unit_guide(array_unit_guide_rows,:);
+
+            full_spikes = td_cell{trialnum}.(sprintf('%s_spikes',array_name));
+            td_cell{trialnum}.(sprintf('%s_spikes',split_array_name)) = full_spikes(:,array_unit_guide_rows);
+        end
+
         td_cell{trialnum} = rmfield(td_cell{trialnum},'timevec');
     end
     % check fields for consistency
@@ -70,8 +97,10 @@ function trial_data = convertSMILEtoTD(smile_data,params)
         warning('something has gone wrong')
     end
     trial_data=cat(2,td_cell{:});
+
     
-    trial_data = reorderTDfields(trial_data);
+    
+%     trial_data = reorderTDfields(trial_data);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -96,13 +125,15 @@ function trial = parse_smile_meta(in_trial,smile_trial,params)
         trial.task = 'RTT';
     elseif startsWith(smile_trial.Overview.trialName,'CST')
         trial.task = 'CST';
+    elseif startsWith(smile_trial.Overview.trialName,'CenterOut')
+        trial.task = 'CO';
     else
         trial.task = smile_trial.Overview.trialName;
     end
 
     % get center target location
     ct_reach_state = smile_trial.Parameters.StateTable(strcmpi(vertcat(smile_trial.Parameters.StateTable.stateName),'Reach to Center'));
-    center_target_idx = strcmpi(ct_reach_state.StateTargets.names,'starttarget');
+    center_target_idx = strcmpi(ct_reach_state.StateTargets.names,'starttarget') | strcmpi(ct_reach_state.StateTargets.names,'start');
     trial.ct_location = ct_reach_state.StateTargets.location(center_target_idx,:);
     trial.ct_location(2) = -trial.ct_location(2); % phasespace inverts y-axis for some reason
 
@@ -165,8 +196,6 @@ function trial = parse_smile_events(in_trial,smile_trial,params)
         trial.timevec = 0:bin_size:end_time_in_s;
     end
 
-    
-
     % startTime is probably state 1, but it generally seems to be called 'Reach to Center' for RTT and CST in Prez
     trial.idx_startTime = timevec_event_index(smile_trial,'Reach to Center',trial.timevec);
 
@@ -193,10 +222,15 @@ function trial = parse_smile_events(in_trial,smile_trial,params)
         % first go cue
         trial.idx_goCueTime = timevec_event_index(smile_trial,'Reach to Target 1',trial.timevec);
 
-        % random target go cues (NOTE: this will assume that there is only one state per target, which assumes that monkeys can't abort 
+        % random target go cues
+        % NOTE: this only picks out the cue to reach for the random target and the time the monkey reaches and holds in the target (ignoring aborts)
         trial.idx_rtgoCueTimes = zeros(1,num_random_targs);
+        trial.idx_rtHoldTimes = zeros(1,num_random_targs);
         for targetnum = 1:num_random_targs
-            trial.idx_rtgoCueTimes(targetnum) = timevec_event_index(smile_trial,sprintf('Reach to Target %d',targetnum),trial.timevec);
+            rt_cue_times = timevec_event_index(smile_trial,sprintf('Reach to Target %d',targetnum),trial.timevec);
+            rt_hold_times = timevec_event_index(smile_trial,sprintf('Hold at Target %d',targetnum),trial.timevec);
+            trial.idx_rtgoCueTimes(targetnum) = rt_cue_times(1);
+            trial.idx_rtHoldTimes(targetnum) = rt_hold_times(end);
         end
 
         % fail
@@ -206,6 +240,26 @@ function trial = parse_smile_events(in_trial,smile_trial,params)
                 if ~isnan(possible_idx_failTime)
                     trial.idx_failTime=possible_idx_failTime;
                     break
+                end
+            end
+        end
+    elseif contains(smile_trial.Overview.trialName,'CenterOut_20181112')
+        % center hold
+        trial.idx_ctHoldTime = timevec_event_index(smile_trial,'Center Hold',trial.timevec);
+
+        % go cue
+        trial.idx_goCueTime = timevec_event_index(smile_trial,'Reach to Target',trial.timevec);
+
+        % target hold
+%         trial.idx_otHoldTime = timevec_event_index(smile_trial,'Target Hold',trial.timevec);
+
+        % fail
+        if smile_trial.Overview.trialStatus==0
+            trial.idx_failTime = timevec_event_index(smile_trial,'Failure (Center)',trial.timevec);
+            if isnan(trial.idx_failTime)
+                trial.idx_failTime = timevec_event_index(smile_trial,'Target Failure',trial.timevec);
+                if isnan(trial.idx_failTime)
+                    trial.idx_failTime = timevec_event_index(smile_trial,'Non-Attempt',trial.timevec);
                 end
             end
         end
@@ -438,13 +492,13 @@ function trial = parse_smile_spikes(in_trial,smile_trial,unit_guide,params)
     
     % import parameters
     array_alias = {};
+    array_name = smile_trial.TrialData.TDT.brainArea;
     assignParams(who,params);
 
     % copy over input trial
     trial = in_trial;
 
     % Extract info from smile_trial
-    array_name = smile_trial.TrialData.TDT.brainArea;
     if isempty(array_name)
         warning('Array name is empty...using MC as a fallback name')
         array_name = 'MC';
@@ -503,6 +557,14 @@ function unit_guide = get_smile_unit_guide(smile_data,params)
         unit_guide = unit_guide(keep_units,:);
     else
         unit_guide = [-1 -1];
+    end
+end
+
+function trial = assign_aborts(in_trial,params)
+    % function to reassign pre-go-cue failures to abort result ('A')
+    trial = in_trial;
+    if trial.result=='F' && isnan(trial.idx_goCueTime)
+        trial.result='A';
     end
 end
 
