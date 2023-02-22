@@ -156,7 +156,7 @@ for i = 1:d
         end
     end
 end
-if do_plot; make_pretty; end
+% if do_plot; make_pretty; end
 
 [Vu,Vsh] = deal(cell(1,d)); 
 for i = 1:d
@@ -192,7 +192,7 @@ if do_plot
     plot(unique_d,oppo_vex(unique_d)/2,'.','Color','g','MarkerSize',30); 
     xlabel('# Unique Dimensions'); 
     ylabel('Average opposite variance'); 
-    make_pretty; 
+%     make_pretty; 
 end 
 
 
@@ -269,7 +269,7 @@ if do_plot
     set(gca,'XTick',[1 2 3]); 
     xticklabels({'Unique1','Shared','Unique2'}); 
     ylabel('VAF'); 
-    make_pretty; 
+%     make_pretty; 
     
     set(lax,'box','on'); 
     s2.XAxis.Visible = 'off'; 
